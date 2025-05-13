@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: hipaa-compliance-app
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - DB_HOST=postgres
+      - DB_USER=hipaa_user
+      - DB_PASSWORD=hipaa_password
+      - DB_NAME=hipaa_compliance
+      - DB_PORT=5432
+      - JWT_SECRET=your_jwt_secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - app_logs:/usr/src/app/logs
+    restart: unless-stopped
+    networks:
+      - hipaa-network
+
+  postgres:
+    image: postgres:13
+    container_name: hipaa-compliance-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=hipaa_user
+      - POSTGRES_PASSWORD=hipaa_password
+      - POSTGRES_DB=hipaa_compliance
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hipaa_user -d hipaa_compliance"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - hipaa-network
+
+networks:
+  hipaa-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  app_logs:
+    driver: local

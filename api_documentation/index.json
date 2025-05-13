@@ -1,0 +1,109 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "HIPAA Compliance Tool API",
+    "version": "1.0.0",
+    "description": "API for managing HIPAA compliance in healthcare organizations",
+    "contact": {
+      "name": "API Support",
+      "email": "support@hipaa-tool.example.com"
+    },
+    "license": {
+      "name": "Proprietary"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "Production API server"
+    },
+    {
+      "url": "http://localhost:3000/api",
+      "description": "Development API server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "User authentication and session management"
+    },
+    {
+      "name": "Users",
+      "description": "User management operations"
+    },
+    {
+      "name": "Documents",
+      "description": "Document management operations"
+    },
+    {
+      "name": "Incidents",
+      "description": "Security incident management"
+    },
+    {
+      "name": "Risk",
+      "description": "Risk assessment and management"
+    },
+    {
+      "name": "Training",
+      "description": "Training management and assignments"
+    },
+    {
+      "name": "Audit",
+      "description": "Audit logging and reporting"
+    },
+    {
+      "name": "Reports",
+      "description": "Advanced reporting and analytics"
+    }
+  ],
+  "paths": {},
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token obtained from /api/auth/login"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "errorCode": {
+            "type": "string"
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Additional documentation",
+    "url": "/documentation"
+  }
+}

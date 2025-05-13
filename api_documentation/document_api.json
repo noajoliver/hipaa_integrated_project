@@ -1,0 +1,1215 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "HIPAA Compliance Tool - Document Management API",
+    "version": "1.0.0",
+    "description": "API documentation for document management endpoints",
+    "contact": {
+      "name": "API Support",
+      "email": "support@hipaa-tool.example.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "API server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Documents",
+      "description": "Document management operations"
+    },
+    {
+      "name": "Categories",
+      "description": "Document category operations"
+    },
+    {
+      "name": "Acknowledgments",
+      "description": "Document acknowledgment operations"
+    },
+    {
+      "name": "Statistics",
+      "description": "Document statistics"
+    }
+  ],
+  "paths": {
+    "/documents": {
+      "get": {
+        "summary": "Get all active documents",
+        "tags": ["Documents"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/pageParam"
+          },
+          {
+            "$ref": "#/components/parameters/limitParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of documents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Document"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new document",
+        "tags": ["Documents"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "Document title",
+                    "example": "HIPAA Security Policies"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Document description",
+                    "example": "Comprehensive security policies for HIPAA compliance"
+                  },
+                  "categoryId": {
+                    "type": "integer",
+                    "description": "Category ID",
+                    "example": 1
+                  },
+                  "version": {
+                    "type": "string",
+                    "description": "Document version",
+                    "example": "1.0"
+                  },
+                  "documentType": {
+                    "type": "string",
+                    "description": "Type of document",
+                    "enum": ["policy", "procedure", "form", "template", "reference", "other"],
+                    "example": "policy"
+                  },
+                  "hipaaCategory": {
+                    "type": "string",
+                    "description": "HIPAA category",
+                    "enum": ["privacy", "security", "breach_notification", "general", "other"],
+                    "example": "security"
+                  },
+                  "reviewDate": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Date for document review",
+                    "example": "2023-12-31"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Document file to upload"
+                  }
+                },
+                "required": ["title"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Document created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Document created successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Document"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/documents/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Document ID",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Get document by ID",
+        "tags": ["Documents"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Document"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a document",
+        "tags": ["Documents"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "Document title",
+                    "example": "Updated HIPAA Security Policies"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Document description",
+                    "example": "Updated comprehensive security policies for HIPAA compliance"
+                  },
+                  "categoryId": {
+                    "type": "integer",
+                    "description": "Category ID",
+                    "example": 2
+                  },
+                  "version": {
+                    "type": "string",
+                    "description": "Document version",
+                    "example": "1.1"
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "Document status",
+                    "enum": ["draft", "active", "archived"],
+                    "example": "active"
+                  },
+                  "documentType": {
+                    "type": "string",
+                    "description": "Type of document",
+                    "enum": ["policy", "procedure", "form", "template", "reference", "other"],
+                    "example": "policy"
+                  },
+                  "hipaaCategory": {
+                    "type": "string",
+                    "description": "HIPAA category",
+                    "enum": ["privacy", "security", "breach_notification", "general", "other"],
+                    "example": "security"
+                  },
+                  "reviewDate": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Date for document review",
+                    "example": "2024-06-30"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Updated document file to upload"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Document updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Document updated successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Document"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete (archive) a document",
+        "tags": ["Documents"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document archived successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Document archived successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/documents/categories": {
+      "get": {
+        "summary": "Get all document categories",
+        "tags": ["Categories"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of document categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DocumentCategory"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new document category",
+        "tags": ["Categories"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Category name",
+                    "example": "Security Policies"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Category description",
+                    "example": "Security-related policy documents"
+                  },
+                  "parentId": {
+                    "type": "integer",
+                    "description": "Parent category ID for hierarchical categories",
+                    "example": 1
+                  }
+                },
+                "required": ["name"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Document category created successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DocumentCategory"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/documents/{documentId}/acknowledge": {
+      "parameters": [
+        {
+          "name": "documentId",
+          "in": "path",
+          "description": "Document ID to acknowledge",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Acknowledge a document",
+        "tags": ["Acknowledgments"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notes": {
+                    "type": "string",
+                    "description": "Notes about the acknowledgment",
+                    "example": "Reviewed and understood"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Document acknowledged successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Document acknowledged successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DocumentAcknowledgment"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - document already acknowledged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Document already acknowledged"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/documents/{documentId}/acknowledgments": {
+      "parameters": [
+        {
+          "name": "documentId",
+          "in": "path",
+          "description": "Document ID to get acknowledgments for",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "$ref": "#/components/parameters/pageParam"
+        },
+        {
+          "$ref": "#/components/parameters/limitParam"
+        }
+      ],
+      "get": {
+        "summary": "Get all acknowledgments for a document",
+        "tags": ["Acknowledgments"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of acknowledgments for the document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DocumentAcknowledgment"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/documents/user/acknowledgments": {
+      "get": {
+        "summary": "Get all documents acknowledged by the current user",
+        "tags": ["Acknowledgments"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/pageParam"
+          },
+          {
+            "$ref": "#/components/parameters/limitParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of documents acknowledged by the current user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DocumentAcknowledgment"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/documents/requiring/acknowledgment": {
+      "get": {
+        "summary": "Get all documents requiring acknowledgment by the current user",
+        "tags": ["Acknowledgments"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/pageParam"
+          },
+          {
+            "$ref": "#/components/parameters/limitParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of documents requiring acknowledgment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Document"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/documents/statistics": {
+      "get": {
+        "summary": "Get document statistics",
+        "tags": ["Statistics"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "totalDocuments": {
+                          "type": "integer",
+                          "example": 42
+                        },
+                        "documentsByType": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "documentType": {
+                                "type": "string",
+                                "example": "policy"
+                              },
+                              "count": {
+                                "type": "integer",
+                                "example": 18
+                              }
+                            }
+                          }
+                        },
+                        "documentsByCategory": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "hipaaCategory": {
+                                "type": "string",
+                                "example": "security"
+                              },
+                              "count": {
+                                "type": "integer",
+                                "example": 15
+                              }
+                            }
+                          }
+                        },
+                        "documentsRequiringReview": {
+                          "type": "integer",
+                          "example": 5
+                        },
+                        "totalAcknowledgments": {
+                          "type": "integer",
+                          "example": 320
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token obtained from /api/auth/login"
+      }
+    },
+    "parameters": {
+      "pageParam": {
+        "name": "page",
+        "in": "query",
+        "description": "Page number for pagination (starts at 1)",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "default": 1,
+          "minimum": 1
+        }
+      },
+      "limitParam": {
+        "name": "limit",
+        "in": "query",
+        "description": "Number of items per page for pagination",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "default": 20,
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "schemas": {
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "example": "HIPAA Security Policies"
+          },
+          "description": {
+            "type": "string",
+            "example": "Comprehensive security policies for HIPAA compliance"
+          },
+          "filePath": {
+            "type": "string",
+            "example": "/uploads/documents/security-policies.pdf"
+          },
+          "version": {
+            "type": "string",
+            "example": "1.0"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "active", "archived"],
+            "example": "active"
+          },
+          "reviewDate": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-12-31T00:00:00.000Z"
+          },
+          "documentType": {
+            "type": "string",
+            "enum": ["policy", "procedure", "form", "template", "reference", "other"],
+            "example": "policy"
+          },
+          "hipaaCategory": {
+            "type": "string",
+            "enum": ["privacy", "security", "breach_notification", "general", "other"],
+            "example": "security"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-01-15T10:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-01-15T10:00:00.000Z"
+          },
+          "createdBy": {
+            "type": "integer",
+            "example": 5
+          },
+          "categoryId": {
+            "type": "integer",
+            "example": 2
+          },
+          "category": {
+            "$ref": "#/components/schemas/DocumentCategory"
+          },
+          "creator": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 5
+              },
+              "firstName": {
+                "type": "string",
+                "example": "Jane"
+              },
+              "lastName": {
+                "type": "string",
+                "example": "Doe"
+              }
+            }
+          }
+        }
+      },
+      "DocumentCategory": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 2
+          },
+          "name": {
+            "type": "string",
+            "example": "Security Policies"
+          },
+          "description": {
+            "type": "string",
+            "example": "Security-related policy documents"
+          },
+          "parentId": {
+            "type": "integer",
+            "example": 1,
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-01-10T09:30:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-01-10T09:30:00.000Z"
+          },
+          "parent": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 1
+              },
+              "name": {
+                "type": "string",
+                "example": "Policies"
+              }
+            }
+          }
+        }
+      },
+      "DocumentAcknowledgment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 42
+          },
+          "documentId": {
+            "type": "integer",
+            "example": 1
+          },
+          "userId": {
+            "type": "integer",
+            "example": 10
+          },
+          "acknowledgmentDate": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-03-15T14:30:00.000Z"
+          },
+          "ipAddress": {
+            "type": "string",
+            "example": "192.168.1.100"
+          },
+          "notes": {
+            "type": "string",
+            "example": "Reviewed and understood",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-03-15T14:30:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-03-15T14:30:00.000Z"
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 10
+              },
+              "firstName": {
+                "type": "string",
+                "example": "John"
+              },
+              "lastName": {
+                "type": "string",
+                "example": "Smith"
+              },
+              "email": {
+                "type": "string",
+                "example": "john.smith@example.com"
+              }
+            }
+          },
+          "document": {
+            "$ref": "#/components/schemas/Document"
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "example": 42
+          },
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "example": 20
+          },
+          "totalPages": {
+            "type": "integer",
+            "example": 3
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Validation error"
+                },
+                "error": {
+                  "type": "string",
+                  "example": "Title is required"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized - Invalid or missing authentication token",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Unauthorized - No token provided"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden - User does not have required permissions",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Requires Compliance Officer role"
+                }
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Document not found"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ServerError": {
+        "description": "Server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Failed to retrieve documents"
+                },
+                "error": {
+                  "type": "string",
+                  "example": "Database connection error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
