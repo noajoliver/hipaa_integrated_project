@@ -5,7 +5,7 @@
 const request = require('supertest');
 const app = require('../../../server');
 const { connect, resetAndSeed, disconnect } = require('../../utils/test-db');
-const { generateToken } = require('../../../utils/token-manager');
+const { createAuthToken } = require('../../utils/auth-helpers');
 const { User, Document, DocumentCategory, DocumentAcknowledgment, Role } = require('../../../models');
 
 let adminToken, userToken, complianceToken, adminUser, testUser, complianceUser, testDocument, testCategory;
@@ -14,34 +14,23 @@ beforeAll(async () => {
   await connect();
   await resetAndSeed();
 
-  // Get users and create compliance officer
-  adminUser = await User.findOne({ where: { username: 'admin' } });
-  testUser = await User.findOne({ where: { username: 'testuser' } });
-
-  // Create compliance officer role and user
-  let complianceRole = await Role.findOne({ where: { name: 'Compliance Officer' } });
-  if (!complianceRole) {
-    complianceRole = await Role.create({
-      name: 'Compliance Officer',
-      description: 'Compliance Officer role',
-      permissions: { isComplianceOfficer: true }
-    });
-  }
-
-  complianceUser = await User.create({
-    username: 'compliance',
-    email: 'compliance@example.com',
-    password: '$2b$10$X.VhWnPjCWHv4.wZp.AXZOGJpVOdnl4JCJHKu/YMlMhh7.SCuW9hO',
-    firstName: 'Compliance',
-    lastName: 'Officer',
-    position: 'Compliance Officer',
-    roleId: complianceRole.id,
-    accountStatus: 'active'
+  // Get users with roles loaded
+  adminUser = await User.findOne({
+    where: { username: 'admin' },
+    include: [{ model: Role, as: 'role' }]
+  });
+  testUser = await User.findOne({
+    where: { username: 'testuser' },
+    include: [{ model: Role, as: 'role' }]
+  });
+  complianceUser = await User.findOne({
+    where: { username: 'compliance' },
+    include: [{ model: Role, as: 'role' }]
   });
 
-  adminToken = generateToken({ id: adminUser.id, username: adminUser.username }).token;
-  userToken = generateToken({ id: testUser.id, username: testUser.username }).token;
-  complianceToken = generateToken({ id: complianceUser.id, username: complianceUser.username }).token;
+  adminToken = createAuthToken(adminUser);
+  userToken = createAuthToken(testUser);
+  complianceToken = createAuthToken(complianceUser);
 
   // Create test category
   testCategory = await DocumentCategory.create({

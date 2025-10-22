@@ -139,16 +139,16 @@ exports.getDocumentById = async (req, res) => {
  */
 exports.createDocument = async (req, res) => {
   try {
-    const { 
-      title, 
-      description, 
-      categoryId, 
-      version, 
-      documentType, 
+    const {
+      title,
+      description,
+      categoryId,
+      version,
+      documentType,
       hipaaCategory,
       reviewDate
     } = req.body;
-    
+
     // Validate required fields
     if (!title) {
       return res.status(400).json({
@@ -156,16 +156,52 @@ exports.createDocument = async (req, res) => {
         message: 'Title is required'
       });
     }
-    
+
+    if (!description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Description is required'
+      });
+    }
+
+    // Validate documentType enum
+    const validDocumentTypes = ['policy', 'procedure', 'form', 'template', 'reference', 'other'];
+    if (documentType && !validDocumentTypes.includes(documentType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid documentType. Must be one of: ${validDocumentTypes.join(', ')}`
+      });
+    }
+
+    // Validate hipaaCategory enum
+    const validHipaaCategories = ['privacy', 'security', 'breach_notification', 'general', 'other'];
+    if (hipaaCategory && !validHipaaCategories.includes(hipaaCategory)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid hipaaCategory. Must be one of: ${validHipaaCategories.join(', ')}`
+      });
+    }
+
+    // Validate categoryId if provided
+    if (categoryId) {
+      const category = await DocumentCategory.findByPk(categoryId);
+      if (!category) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid categoryId: Document category not found'
+        });
+      }
+    }
+
     // Handle file upload if present
     let filePath = null;
     if (req.file) {
       filePath = `/uploads/documents/${req.file.filename}`;
     }
-    
+
     // Get the current user from auth middleware
     const createdBy = req.user.id;
-    
+
     const newDocument = await Document.create({
       title,
       description,
@@ -178,7 +214,7 @@ exports.createDocument = async (req, res) => {
       hipaaCategory: hipaaCategory || 'general',
       createdBy
     });
-    
+
     return res.status(201).json({
       success: true,
       message: 'Document created successfully',
@@ -303,28 +339,28 @@ exports.updateDocument = async (req, res) => {
 exports.deleteDocument = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const document = await Document.findByPk(id);
-    
+
     if (!document) {
       return res.status(404).json({
         success: false,
         message: 'Document not found'
       });
     }
-    
-    // Archive the document instead of deleting
-    await document.update({ status: 'archived' });
-    
+
+    // Soft delete the document (sets deletedAt timestamp)
+    await document.destroy();
+
     return res.status(200).json({
       success: true,
-      message: 'Document archived successfully'
+      message: 'Document deleted successfully'
     });
   } catch (error) {
-    console.error('Error archiving document:', error);
+    console.error('Error deleting document:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to archive document',
+      message: 'Failed to delete document',
       error: error.message
     });
   }
@@ -391,7 +427,7 @@ exports.getAllCategories = async (req, res) => {
 exports.createCategory = async (req, res) => {
   try {
     const { name, description, parentId } = req.body;
-    
+
     // Validate required fields
     if (!name) {
       return res.status(400).json({
@@ -399,13 +435,25 @@ exports.createCategory = async (req, res) => {
         message: 'Name is required'
       });
     }
-    
+
+    // Check for duplicate category name
+    const existingCategory = await DocumentCategory.findOne({
+      where: { name }
+    });
+
+    if (existingCategory) {
+      return res.status(400).json({
+        success: false,
+        message: 'Category with this name already exists'
+      });
+    }
+
     const newCategory = await DocumentCategory.create({
       name,
       description,
       parentId
     });
-    
+
     return res.status(201).json({
       success: true,
       message: 'Document category created successfully',
