@@ -17,13 +17,19 @@
     "init-db": "node init-db-windows.js",
     "test": "jest",
     "test:unit": "jest --testPathIgnorePatterns=tests/performance --testPathIgnorePatterns=tests/e2e",
+    "test:integration": "jest tests/integration",
     "test:performance": "jest --testPathPattern=tests/performance",
     "test:pagination": "jest tests/performance/pagination.test.js",
     "test:documents": "jest tests/performance/document-queries.test.js",
     "test:incidents": "jest tests/performance/incident-queries.test.js",
     "test:indexes": "jest tests/performance/database-indexes.test.js",
     "test:e2e": "node tests/e2e/run-e2e-tests.js",
-    "test:all": "npm run test:unit && npm run test:performance && npm run test:e2e"
+    "test:all": "npm run test:unit && npm run test:performance && npm run test:e2e",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:db:setup": "./scripts/setup-test-db.sh",
+    "test:db:teardown": "./scripts/teardown-test-db.sh",
+    "test:db:reset": "npm run test:db:teardown && npm run test:db:setup"
   },
   "keywords": [
     "hipaa",
