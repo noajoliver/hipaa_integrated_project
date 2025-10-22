@@ -1,0 +1,48 @@
+Story ID,Epic,Title,Priority,Points,Status,Assignee,Sprint,Dependencies,Testing Status,Notes
+STORY-001.1,EPIC-001,Create Input Validation Middleware Framework,CRITICAL,5,Not Started,,Sprint 1,,Not Started,Foundation for all validation
+STORY-001.2,EPIC-001,Add Validation to Training Course Endpoints,CRITICAL,3,Not Started,,Sprint 1,STORY-001.1,Not Started,
+STORY-001.3,EPIC-001,Add Validation to Training Assignment Endpoints,CRITICAL,3,Not Started,,Sprint 1,STORY-001.1,Not Started,
+STORY-001.4,EPIC-001,Add Validation to Document Endpoints,CRITICAL,3,Not Started,,Sprint 1,STORY-001.1,Not Started,
+STORY-001.5,EPIC-001,Fix parseInt Usage Across Controllers,CRITICAL,5,Not Started,,Sprint 1,,Not Started,Fixes C-004 defect
+STORY-001.6,EPIC-001,Add Validation to Risk Assessment Endpoints,CRITICAL,3,Not Started,,Sprint 1,STORY-001.1,Not Started,
+STORY-001.7,EPIC-001,Add Validation to Incident Management Endpoints,CRITICAL,3,Not Started,,Sprint 1,STORY-001.1,Not Started,
+STORY-002.1,EPIC-002,Fix Race Condition in Document Acknowledgment,CRITICAL,5,Not Started,,Sprint 2,,Not Started,Fixes C-003 defect
+STORY-002.2,EPIC-002,Sanitize Error Messages to Prevent Information Disclosure,CRITICAL,5,Not Started,,Sprint 2,,Not Started,Fixes C-007 defect
+STORY-002.3,EPIC-002,Fix IDOR Vulnerability in Assignment Completion,CRITICAL,3,Not Started,,Sprint 2,,Not Started,Fixes C-009 defect
+STORY-002.4,EPIC-002,Implement Rate Limiting on Critical Endpoints,CRITICAL,5,Not Started,,Sprint 2,,Not Started,Fixes C-010 defect
+STORY-002.5,EPIC-002,Add Resource-Level Authorization Checks,CRITICAL,8,Not Started,,Sprint 2,STORY-002.3,Not Started,Fixes C-012 defect
+STORY-002.6,EPIC-002,Implement Path Traversal Protection,CRITICAL,3,Not Started,,Sprint 2,,Not Started,Fixes C-011 defect
+STORY-003.1,EPIC-003,Create Transaction Management Utility,CRITICAL,5,Not Started,,Sprint 2,,Not Started,Foundation for transactions
+STORY-003.2,EPIC-003,Add Transactions to Risk Assessment Operations,CRITICAL,5,Not Started,,Sprint 2,STORY-003.1,Not Started,Fixes C-008 defect
+STORY-003.3,EPIC-003,Add Transactions to Incident Management Operations,CRITICAL,5,Not Started,,Sprint 2,STORY-003.1,Not Started,Fixes C-008 defect
+STORY-003.4,EPIC-003,Add Transactions to Training Completion,CRITICAL,3,Not Started,,Sprint 2,STORY-003.1,Not Started,Fixes C-008 defect
+STORY-003.5,EPIC-003,Implement Optimistic Locking for Concurrent Updates,CRITICAL,8,Not Started,,Sprint 2,STORY-003.1,Not Started,Fixes H-014 defect
+STORY-004.1,EPIC-004,Set Up PostgreSQL Test Database,CRITICAL,5,Not Started,,Sprint 1,,Not Started,Blocks all testing
+STORY-004.2,EPIC-004,Create Test Data Factories,CRITICAL,5,Not Started,,Sprint 1,STORY-004.1,Not Started,
+STORY-004.3,EPIC-004,Update Test Utilities and Helpers,CRITICAL,3,Not Started,,Sprint 1,"STORY-004.1, STORY-004.2",Not Started,
+STORY-004.4,EPIC-004,Run and Fix Existing Tests,CRITICAL,8,Not Started,,Sprint 1,"STORY-004.1, STORY-004.2, STORY-004.3",Not Started,Get to >90% pass rate
+STORY-005.1,EPIC-005,Add Audit Logging to Document Acknowledgment,HIGH,3,Not Started,,Sprint 3,,Not Started,HIPAA compliance
+STORY-005.2,EPIC-005,Add Audit Logging to Training Completion,HIGH,3,Not Started,,Sprint 3,,Not Started,HIPAA compliance
+STORY-005.3,EPIC-005,Add Audit Logging to Breach Determination,HIGH,3,Not Started,,Sprint 3,,Not Started,HIPAA compliance
+STORY-005.4,EPIC-005,Add Comprehensive Audit Logging Middleware,HIGH,8,Not Started,,Sprint 3,,Not Started,HIPAA compliance
+STORY-007.1,EPIC-007,Implement Pagination on All List Endpoints,HIGH,13,Not Started,,Sprint 3,,Not Started,Fixes H-002 defect
+STORY-008.1,EPIC-008,Standardize API Response Format,MEDIUM,5,Not Started,,Sprint 4,,Not Started,Fixes H-005 defect
+STORY-008.2,EPIC-008,Implement Field-Level Validation Error Messages,MEDIUM,3,Not Started,,Sprint 4,STORY-008.1,Not Started,Fixes M-003 defect
+STORY-008.3,EPIC-008,Add Request ID Middleware,MEDIUM,2,Not Started,,Sprint 4,,Not Started,
+STORY-008.4,EPIC-008,Implement Structured Error Logging,MEDIUM,5,Not Started,,Sprint 4,"STORY-008.1, STORY-008.3",Not Started,
+STORY-008.5,EPIC-008,Add User-Friendly Error Pages,LOW,5,Not Started,,Sprint 4,STORY-008.1,Not Started,
+STORY-009.1,EPIC-009,Implement Incident Status State Machine,MEDIUM,8,Not Started,,Sprint 4,STORY-008.1,Not Started,Fixes H-008 defect
+STORY-009.2,EPIC-009,Implement Risk Assessment Workflow Validation,MEDIUM,5,Not Started,,Sprint 4,STORY-009.1,Not Started,Fixes H-008 defect
+STORY-009.3,EPIC-009,Prevent Duplicate Active Operations,MEDIUM,5,Not Started,,Sprint 4,,Not Started,Fixes H-009 defect
+STORY-010.1,EPIC-010,Enhance Health Check Endpoint,MEDIUM,3,Not Started,,Sprint 5,,Not Started,Fixes M-013 defect
+STORY-010.2,EPIC-010,Implement Request/Response Logging,MEDIUM,5,Not Started,,Sprint 5,STORY-008.3,Not Started,Fixes M-007 defect
+STORY-010.3,EPIC-010,Add Performance Metrics Collection,MEDIUM,5,Not Started,,Sprint 5,STORY-010.2,Not Started,
+STORY-010.4,EPIC-010,Implement Application-Level Monitoring,LOW,3,Not Started,,Sprint 5,"STORY-010.2, STORY-010.3",Not Started,
+STORY-011.1,EPIC-011,Create GitHub Actions CI Pipeline,MEDIUM,8,Not Started,,Sprint 5,STORY-004.1,Not Started,
+STORY-011.2,EPIC-011,Add Pre-commit Hooks,MEDIUM,3,Not Started,,Sprint 5,,Not Started,
+STORY-011.3,EPIC-011,Create Deployment Pipeline,MEDIUM,8,Not Started,,Sprint 5,STORY-011.1,Not Started,
+STORY-011.4,EPIC-011,Add Database Migration Automation,LOW,3,Not Started,,Sprint 5,STORY-011.3,Not Started,
+STORY-012.1,EPIC-012,Generate OpenAPI/Swagger Documentation,MEDIUM,5,Not Started,,Sprint 5,,Not Started,Fixes M-014 defect
+STORY-012.2,EPIC-012,Create Developer Setup Guide,MEDIUM,3,Not Started,,Sprint 5,,Not Started,
+STORY-012.3,EPIC-012,Document Architecture and Design Decisions,MEDIUM,5,Not Started,,Sprint 5,,Not Started,
+STORY-012.4,EPIC-012,Create Runbook for Operations,MEDIUM,3,Not Started,,Sprint 5,STORY-010.1,Not Started,
