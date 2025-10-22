@@ -144,11 +144,17 @@ class Factories {
    * @returns {Promise<User>}
    */
   static async createAdmin(overrides = {}) {
+    const { User, Role } = getModels();
     const adminRole = await this.getOrCreateRole('Admin');
-    return await this.createUser({
+    const user = await this.createUser({
       roleId: adminRole.id,
       position: 'System Administrator',
       ...overrides
+    });
+
+    // Reload user with role association for token generation
+    return await User.findByPk(user.id, {
+      include: [{ model: Role, as: 'role' }]
     });
   }
 
@@ -158,11 +164,17 @@ class Factories {
    * @returns {Promise<User>}
    */
   static async createComplianceOfficer(overrides = {}) {
+    const { User, Role } = getModels();
     const coRole = await this.getOrCreateRole('Compliance Officer');
-    return await this.createUser({
+    const user = await this.createUser({
       roleId: coRole.id,
       position: 'Compliance Officer',
       ...overrides
+    });
+
+    // Reload user with role association for token generation
+    return await User.findByPk(user.id, {
+      include: [{ model: Role, as: 'role' }]
     });
   }
 
@@ -172,11 +184,17 @@ class Factories {
    * @returns {Promise<User>}
    */
   static async createManager(overrides = {}) {
+    const { User, Role } = getModels();
     const managerRole = await this.getOrCreateRole('Manager');
-    return await this.createUser({
+    const user = await this.createUser({
       roleId: managerRole.id,
       position: 'Department Manager',
       ...overrides
+    });
+
+    // Reload user with role association for token generation
+    return await User.findByPk(user.id, {
+      include: [{ model: Role, as: 'role' }]
     });
   }
 

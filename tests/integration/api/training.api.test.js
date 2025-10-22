@@ -5,8 +5,8 @@
 const request = require('supertest');
 const app = require('../../../server');
 const { connect, resetAndSeed, disconnect } = require('../../utils/test-db');
-const { generateToken } = require('../../../utils/token-manager');
-const { User, TrainingCourse, TrainingAssignment } = require('../../../models');
+const { createAuthToken } = require('../../utils/auth-helpers');
+const { User, Role, TrainingCourse, TrainingAssignment } = require('../../../models');
 
 let adminToken, userToken, adminUser, testUser, testCourse;
 
@@ -14,12 +14,18 @@ beforeAll(async () => {
   await connect();
   await resetAndSeed();
 
-  // Get users and generate tokens
-  adminUser = await User.findOne({ where: { username: 'admin' } });
-  testUser = await User.findOne({ where: { username: 'testuser' } });
+  // Get users with roles loaded and generate tokens
+  adminUser = await User.findOne({
+    where: { username: 'admin' },
+    include: [{ model: Role, as: 'role' }]
+  });
+  testUser = await User.findOne({
+    where: { username: 'testuser' },
+    include: [{ model: Role, as: 'role' }]
+  });
 
-  adminToken = generateToken({ id: adminUser.id, username: adminUser.username }).token;
-  userToken = generateToken({ id: testUser.id, username: testUser.username }).token;
+  adminToken = createAuthToken(adminUser);
+  userToken = createAuthToken(testUser);
 
   // Create a test course
   testCourse = await TrainingCourse.create({

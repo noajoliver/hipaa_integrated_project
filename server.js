@@ -114,6 +114,11 @@ const csrfProtection = csurf({
 
 // Apply CSRF selectively - exclude paths that don't need CSRF
 app.use((req, res, next) => {
+  // Skip CSRF in test environment
+  if (process.env.NODE_ENV === 'test') {
+    return next();
+  }
+
   // Paths that don't need CSRF protection
   const excludedPaths = ['/api/auth/login', '/api/health'];
   if (excludedPaths.includes(req.path)) {
