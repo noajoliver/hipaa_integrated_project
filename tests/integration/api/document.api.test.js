@@ -494,7 +494,7 @@ describe('Document Acknowledgment API Endpoints', () => {
     it('should return documents requiring acknowledgment', async () => {
       const response = await request(app)
         .get('/api/documents/requiring/acknowledgment')
-        .set('x-access-token', testUser)
+        .set('x-access-token', userToken)
         .expect('Content-Type', /json/)
         .expect(200);
 

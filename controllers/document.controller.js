@@ -2,7 +2,7 @@
  * Document Controller - Handles HTTP requests for document-related operations
  * @module controllers/document
  */
-const { Document, DocumentCategory, DocumentAcknowledgment, User } = require('../models');
+const { Document, DocumentCategory, DocumentAcknowledgment, User, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
@@ -23,7 +23,10 @@ const path = require('path');
  */
 exports.getAllDocuments = async (req, res) => {
   try {
-    const documents = await Document.findAll({
+    // Get pagination parameters from middleware
+    const { limit, offset, page } = req.pagination || { limit: 20, offset: 0, page: 1 };
+
+    const { count, rows: documents } = await Document.findAndCountAll({
       where: {
         status: {
           [Op.ne]: 'archived'
@@ -40,12 +43,23 @@ exports.getAllDocuments = async (req, res) => {
           attributes: ['id', 'firstName', 'lastName']
         }
       ],
+      limit,
+      offset,
       order: [['title', 'ASC']]
     });
 
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(count / limit);
+
     return res.status(200).json({
       success: true,
-      data: documents
+      data: documents,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages
+      }
     });
   } catch (error) {
     console.error('Error getting documents:', error);
@@ -562,7 +576,7 @@ exports.acknowledgeDocument = async (req, res) => {
 exports.getDocumentAcknowledgments = async (req, res) => {
   try {
     const { documentId } = req.params;
-    
+
     // Check if document exists
     const document = await Document.findByPk(documentId);
     if (!document) {
@@ -571,8 +585,11 @@ exports.getDocumentAcknowledgments = async (req, res) => {
         message: 'Document not found'
       });
     }
-    
-    const acknowledgments = await DocumentAcknowledgment.findAll({
+
+    // Get pagination parameters from middleware
+    const { limit, offset, page } = req.pagination || { limit: 20, offset: 0, page: 1 };
+
+    const { count, rows: acknowledgments } = await DocumentAcknowledgment.findAndCountAll({
       where: { documentId },
       include: [
         {
@@ -581,12 +598,23 @@ exports.getDocumentAcknowledgments = async (req, res) => {
           attributes: ['id', 'firstName', 'lastName', 'email']
         }
       ],
+      limit,
+      offset,
       order: [['acknowledgmentDate', 'DESC']]
     });
-    
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(count / limit);
+
     return res.status(200).json({
       success: true,
-      data: acknowledgments
+      data: acknowledgments,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages
+      }
     });
   } catch (error) {
     console.error('Error getting document acknowledgments:', error);
@@ -751,11 +779,14 @@ exports.getDocumentsRequiringAcknowledgment = async (req, res) => {
  */
 exports.getDocumentStatistics = async (req, res) => {
   try {
-    // Total documents
-    const totalDocuments = await Document.count({
+    // Total documents (all statuses)
+    const totalDocuments = await Document.count();
+
+    // Active documents only
+    const activeDocuments = await Document.count({
       where: { status: 'active' }
     });
-    
+
     // Documents by type
     const documentsByType = await Document.findAll({
       attributes: [
@@ -765,7 +796,7 @@ exports.getDocumentStatistics = async (req, res) => {
       where: { status: 'active' },
       group: ['documentType']
     });
-    
+
     // Documents by HIPAA category
     const documentsByCategory = await Document.findAll({
       attributes: [
@@ -775,7 +806,7 @@ exports.getDocumentStatistics = async (req, res) => {
       where: { status: 'active' },
       group: ['hipaaCategory']
     });
-    
+
     // Documents requiring review
     const documentsRequiringReview = await Document.count({
       where: {
@@ -785,14 +816,15 @@ exports.getDocumentStatistics = async (req, res) => {
         }
       }
     });
-    
+
     // Total acknowledgments
     const totalAcknowledgments = await DocumentAcknowledgment.count();
-    
+
     return res.status(200).json({
       success: true,
       data: {
         totalDocuments,
+        activeDocuments,
         documentsByType,
         documentsByCategory,
         documentsRequiringReview,
