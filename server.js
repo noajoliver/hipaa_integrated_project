@@ -162,22 +162,25 @@ app.use(errorHandlerMiddleware);
 
 const PORT = process.env.PORT || 8080;
 
-// Sync database and start server
-db.sequelize.sync()
-  .then(() => {
-    console.log('Database synchronized successfully');
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-      console.log(`API available at http://localhost:${PORT}/api`);
-      if (process.env.NODE_ENV === 'production') {
-        console.log(`Frontend available at http://localhost:${PORT}`);
-      } else {
-        console.log(`Frontend development server should be started separately with 'npm run client'`);
-      }
+// Only start server if this file is run directly (not imported in tests)
+if (require.main === module) {
+  // Sync database and start server
+  db.sequelize.sync()
+    .then(() => {
+      console.log('Database synchronized successfully');
+      app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+        console.log(`API available at http://localhost:${PORT}/api`);
+        if (process.env.NODE_ENV === 'production') {
+          console.log(`Frontend available at http://localhost:${PORT}`);
+        } else {
+          console.log(`Frontend development server should be started separately with 'npm run client'`);
+        }
+      });
+    })
+    .catch(err => {
+      console.error('Failed to sync database:', err);
     });
-  })
-  .catch(err => {
-    console.error('Failed to sync database:', err);
-  });
+}
 
 module.exports = app;

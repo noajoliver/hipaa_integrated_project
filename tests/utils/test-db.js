@@ -2,28 +2,8 @@
  * Test database setup and utilities
  * @module tests/utils/test-db
  */
-const { Sequelize } = require('sequelize');
-const config = require('../../config/database')[process.env.NODE_ENV || 'test'];
+const { sequelize } = require('../../models');
 const Factories = require('./factories');
-
-// Create a test database connection
-const sequelize = new Sequelize(
-  config.database,
-  config.username,
-  config.password,
-  {
-    host: config.host,
-    port: config.port || 5432,
-    dialect: config.dialect,
-    logging: config.logging || false,
-    pool: config.pool || {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    }
-  }
-);
 
 /**
  * Connect to the test database
