@@ -118,7 +118,7 @@ class Factories {
     const hashedPassword = '$2b$10$X.VhWnPjCWHv4.wZp.AXZOGJpVOdnl4JCJHKu/YMlMhh7.SCuW9hO';
 
     const userData = {
-      username: faker.internet.userName().toLowerCase().substring(0, 50),
+      username: faker.internet.username().toLowerCase().substring(0, 50),
       email: faker.internet.email().toLowerCase(),
       password: hashedPassword,
       firstName: faker.person.firstName(),
@@ -278,7 +278,7 @@ class Factories {
       courseId,
       assignedDate: faker.date.past({ days: 30 }),
       dueDate: faker.date.future({ days: 30 }),
-      status: 'pending',
+      status: 'assigned',
       ...overrides
     };
 
@@ -298,7 +298,6 @@ class Factories {
       status: 'completed',
       completionDate,
       score: faker.number.int({ min: 80, max: 100 }),
-      attempts: 1,
       ...overrides
     });
   }
@@ -376,7 +375,7 @@ class Factories {
     const acknowledgmentData = {
       userId,
       documentId,
-      acknowledgedAt: faker.date.recent({ days: 7 }),
+      acknowledgmentDate: faker.date.recent({ days: 7 }),
       ipAddress: faker.internet.ipv4(),
       ...overrides
     };
@@ -467,10 +466,10 @@ class Factories {
     const updateData = {
       incidentId,
       updatedBy,
-      updateType: faker.helpers.arrayElement(['status_change', 'comment', 'attachment', 'assignment']),
-      updateText: faker.lorem.paragraph(),
-      oldValue: null,
-      newValue: null,
+      updateType: faker.helpers.arrayElement(['status_change', 'comment', 'investigation', 'remediation']),
+      description: faker.lorem.paragraph(),
+      previousStatus: null,
+      newStatus: null,
       ...overrides
     };
 
@@ -490,8 +489,12 @@ class Factories {
   static async createRiskAssessment(conductedBy, overrides = {}) {
     const { RiskAssessment } = getModels();
 
+    const now = new Date();
+    const month = now.toLocaleString('en-US', { month: 'long' });
+    const year = now.getFullYear();
+
     const assessmentData = {
-      title: `Risk Assessment - ${faker.date.month()} ${faker.date.year()}`,
+      title: `Risk Assessment - ${month} ${year}`,
       description: faker.lorem.paragraph(),
       assessmentDate: faker.date.recent({ days: 30 }),
       conductedBy,
@@ -587,8 +590,8 @@ class Factories {
     const auditLogData = {
       userId,
       action: faker.helpers.arrayElement(['CREATE', 'READ', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT']),
-      resourceType: faker.helpers.arrayElement(['User', 'Document', 'Incident', 'RiskAssessment', 'TrainingCourse']),
-      resourceId: faker.number.int({ min: 1, max: 1000 }),
+      entityType: faker.helpers.arrayElement(['User', 'Document', 'Incident', 'RiskAssessment', 'TrainingCourse']),
+      entityId: String(faker.number.int({ min: 1, max: 1000 })),
       details: faker.lorem.sentence(),
       ipAddress: faker.internet.ipv4(),
       userAgent: faker.internet.userAgent(),

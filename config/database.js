@@ -27,7 +27,7 @@ module.exports = {
     password: process.env.TEST_DB_PASSWORD || 'test_password',
     database: process.env.TEST_DB_NAME || 'hipaa_compliance_test',
     host: process.env.TEST_DB_HOST || 'localhost',
-    port: process.env.TEST_DB_PORT || 5433,
+    port: process.env.TEST_DB_PORT || 5432,
     dialect: 'postgres',
     logging: false,
     // Smaller pool for tests

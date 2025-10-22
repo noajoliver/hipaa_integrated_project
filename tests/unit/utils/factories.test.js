@@ -196,7 +196,7 @@ describe('Test Data Factories', () => {
       expect(assignment).toBeDefined();
       expect(assignment.userId).toBe(user.id);
       expect(assignment.courseId).toBe(course.id);
-      expect(assignment.status).toBe('pending');
+      expect(assignment.status).toBe('assigned');
       expect(assignment.assignedDate).toBeDefined();
       expect(assignment.dueDate).toBeDefined();
     });
@@ -207,17 +207,16 @@ describe('Test Data Factories', () => {
       expect(assignment.status).toBe('completed');
       expect(assignment.completionDate).toBeDefined();
       expect(assignment.score).toBeGreaterThanOrEqual(80);
-      expect(assignment.attempts).toBe(1);
     });
 
     it('should create an assignment with custom values', async () => {
       const assignment = await Factories.createAssignment(user.id, course.id, {
         status: 'in_progress',
-        attempts: 2
+        notes: 'Custom notes'
       });
 
       expect(assignment.status).toBe('in_progress');
-      expect(assignment.attempts).toBe(2);
+      expect(assignment.notes).toBe('Custom notes');
     });
   });
 
@@ -282,7 +281,7 @@ describe('Test Data Factories', () => {
       expect(acknowledgment).toBeDefined();
       expect(acknowledgment.userId).toBe(user.id);
       expect(acknowledgment.documentId).toBe(document.id);
-      expect(acknowledgment.acknowledgedAt).toBeDefined();
+      expect(acknowledgment.acknowledgmentDate).toBeDefined();
       expect(acknowledgment.ipAddress).toBeDefined();
     });
 
@@ -360,20 +359,20 @@ describe('Test Data Factories', () => {
       expect(update).toBeDefined();
       expect(update.incidentId).toBe(incident.id);
       expect(update.updatedBy).toBe(user.id);
-      expect(update.updateText).toBeDefined();
-      expect(['status_change', 'comment', 'attachment', 'assignment']).toContain(update.updateType);
+      expect(update.description).toBeDefined();
+      expect(['status_change', 'comment', 'investigation', 'remediation']).toContain(update.updateType);
     });
 
     it('should create an update with custom type', async () => {
       const update = await Factories.createIncidentUpdate(incident.id, user.id, {
         updateType: 'status_change',
-        oldValue: 'reported',
-        newValue: 'under_investigation'
+        previousStatus: 'reported',
+        newStatus: 'under_investigation'
       });
 
       expect(update.updateType).toBe('status_change');
-      expect(update.oldValue).toBe('reported');
-      expect(update.newValue).toBe('under_investigation');
+      expect(update.previousStatus).toBe('reported');
+      expect(update.newStatus).toBe('under_investigation');
     });
   });
 
@@ -450,12 +449,13 @@ describe('Test Data Factories', () => {
         category: 'technical',
         assetName: 'Patient Database',
         likelihood: 'high',
-        impact: 'critical'
+        impact: 'high'
       });
 
       expect(riskItem.category).toBe('technical');
       expect(riskItem.assetName).toBe('Patient Database');
       expect(riskItem.likelihood).toBe('high');
+      expect(riskItem.impact).toBe('high');
     });
   });
 
@@ -472,21 +472,21 @@ describe('Test Data Factories', () => {
       expect(auditLog).toBeDefined();
       expect(auditLog.userId).toBe(user.id);
       expect(['CREATE', 'READ', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT']).toContain(auditLog.action);
-      expect(['User', 'Document', 'Incident', 'RiskAssessment', 'TrainingCourse']).toContain(auditLog.resourceType);
+      expect(['User', 'Document', 'Incident', 'RiskAssessment', 'TrainingCourse']).toContain(auditLog.entityType);
       expect(auditLog.ipAddress).toBeDefined();
     });
 
     it('should create an audit log with custom values', async () => {
       const auditLog = await Factories.createAuditLog(user.id, {
         action: 'LOGIN',
-        resourceType: 'User',
-        resourceId: user.id,
+        entityType: 'User',
+        entityId: String(user.id),
         ipAddress: '192.168.1.1'
       });
 
       expect(auditLog.action).toBe('LOGIN');
-      expect(auditLog.resourceType).toBe('User');
-      expect(auditLog.resourceId).toBe(user.id);
+      expect(auditLog.entityType).toBe('User');
+      expect(auditLog.entityId).toBe(String(user.id));
       expect(auditLog.ipAddress).toBe('192.168.1.1');
     });
   });
@@ -594,13 +594,13 @@ describe('Test Data Factories', () => {
 
       const update1 = await Factories.createIncidentUpdate(incident.id, user.id, {
         updateType: 'comment',
-        updateText: 'Initial investigation started'
+        description: 'Initial investigation started'
       });
 
       const update2 = await Factories.createIncidentUpdate(incident.id, user.id, {
         updateType: 'status_change',
-        oldValue: 'reported',
-        newValue: 'under_investigation'
+        previousStatus: 'reported',
+        newStatus: 'under_investigation'
       });
 
       expect(update1.incidentId).toBe(incident.id);
