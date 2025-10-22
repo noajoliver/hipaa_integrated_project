@@ -7,7 +7,7 @@
  * @module middleware/validation
  */
 
-const { AppError } = require('./error-handler');
+const { AppError } = require('../utils/error-handler');
 
 /**
  * Validate that a route parameter is a valid positive integer
