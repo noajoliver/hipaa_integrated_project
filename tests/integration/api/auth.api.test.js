@@ -20,10 +20,10 @@ afterAll(async () => {
 });
 
 describe('Auth API Endpoints', () => {
-  describe('POST /api/auth/signin', () => {
+  describe('POST /api/auth/login', () => {
     it('should authenticate a user with valid credentials', async () => {
       const response = await request(app)
-        .post('/api/auth/signin')
+        .post('/api/auth/login')
         .send({
           username: 'admin',
           password: 'Admin123!'
@@ -41,7 +41,7 @@ describe('Auth API Endpoints', () => {
     
     it('should reject authentication with invalid credentials', async () => {
       await request(app)
-        .post('/api/auth/signin')
+        .post('/api/auth/login')
         .send({
           username: 'admin',
           password: 'WrongPassword'
@@ -52,7 +52,7 @@ describe('Auth API Endpoints', () => {
     
     it('should reject authentication with missing credentials', async () => {
       await request(app)
-        .post('/api/auth/signin')
+        .post('/api/auth/login')
         .send({
           username: 'admin'
           // Missing password
@@ -62,7 +62,7 @@ describe('Auth API Endpoints', () => {
     });
   });
   
-  describe('POST /api/auth/signup', () => {
+  describe('POST /api/auth/register', () => {
     it('should register a new user with valid data', async () => {
       const newUser = {
         username: 'registeruser',
@@ -74,7 +74,7 @@ describe('Auth API Endpoints', () => {
       };
       
       const response = await request(app)
-        .post('/api/auth/signup')
+        .post('/api/auth/register')
         .send(newUser)
         .expect('Content-Type', /json/)
         .expect(201);
@@ -96,7 +96,7 @@ describe('Auth API Endpoints', () => {
       };
       
       await request(app)
-        .post('/api/auth/signup')
+        .post('/api/auth/register')
         .send(duplicateUser)
         .expect('Content-Type', /json/)
         .expect(400);
@@ -110,21 +110,21 @@ describe('Auth API Endpoints', () => {
       };
       
       await request(app)
-        .post('/api/auth/signup')
+        .post('/api/auth/register')
         .send(invalidUser)
         .expect('Content-Type', /json/)
         .expect(400);
     });
   });
   
-  describe('POST /api/auth/signout', () => {
+  describe('POST /api/auth/logout', () => {
     it('should log out a user successfully', async () => {
       // Generate a token to blacklist
       const user = await User.findOne({ where: { username: 'admin' } });
       const tokenInfo = generateToken({ id: user.id, username: user.username });
       
       const response = await request(app)
-        .post('/api/auth/signout')
+        .post('/api/auth/logout')
         .set('x-access-token', tokenInfo.token)
         .expect('Content-Type', /json/)
         .expect(200);
@@ -135,20 +135,20 @@ describe('Auth API Endpoints', () => {
     
     it('should reject logout without token', async () => {
       await request(app)
-        .post('/api/auth/signout')
+        .post('/api/auth/logout')
         .expect('Content-Type', /json/)
         .expect(401);
     });
   });
   
-  describe('GET /api/auth/user', () => {
+  describe('GET /api/auth/profile', () => {
     it('should return current user data', async () => {
       // Generate a token
       const user = await User.findOne({ where: { username: 'admin' } });
       const tokenInfo = generateToken({ id: user.id, username: user.username });
       
       const response = await request(app)
-        .get('/api/auth/user')
+        .get('/api/auth/profile')
         .set('x-access-token', tokenInfo.token)
         .expect('Content-Type', /json/)
         .expect(200);
@@ -162,7 +162,7 @@ describe('Auth API Endpoints', () => {
     
     it('should reject request without token', async () => {
       await request(app)
-        .get('/api/auth/user')
+        .get('/api/auth/profile')
         .expect('Content-Type', /json/)
         .expect(401);
     });
