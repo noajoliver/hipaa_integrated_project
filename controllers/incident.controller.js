@@ -1,10 +1,13 @@
-const { Incident, IncidentUpdate, User } = require('../models');
-const { Op } = require('sequelize');
+const { Incident, IncidentUpdate, User, sequelize } = require('../models');
+const { Op, QueryTypes } = require('sequelize');
 
 // Get all incidents
 exports.getAllIncidents = async (req, res) => {
   try {
-    const incidents = await Incident.findAll({
+    // Get pagination parameters from middleware
+    const { limit, offset, page } = req.pagination || { limit: 20, offset: 0, page: 1 };
+
+    const { count, rows: incidents } = await Incident.findAndCountAll({
       include: [
         {
           model: User,
@@ -17,12 +20,23 @@ exports.getAllIncidents = async (req, res) => {
           attributes: ['id', 'firstName', 'lastName']
         }
       ],
+      limit,
+      offset,
       order: [['incidentDate', 'DESC']]
     });
-    
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(count / limit);
+
     return res.status(200).json({
       success: true,
-      data: incidents
+      data: incidents,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages
+      }
     });
   } catch (error) {
     console.error('Error getting incidents:', error);
@@ -100,18 +114,19 @@ exports.getIncidentById = async (req, res) => {
 // Create a new incident
 exports.createIncident = async (req, res) => {
   try {
-    const { 
-      title, 
-      description, 
-      incidentDate, 
-      severity, 
-      category, 
-      location, 
-      affectedSystems, 
-      affectedData, 
-      isBreachable 
+    const {
+      title,
+      description,
+      incidentDate,
+      severity,
+      status,
+      category,
+      location,
+      affectedSystems,
+      affectedData,
+      isBreachable
     } = req.body;
-    
+
     // Validate required fields
     if (!title || !description || !category) {
       return res.status(400).json({
@@ -119,17 +134,47 @@ exports.createIncident = async (req, res) => {
         message: 'Title, description, and category are required'
       });
     }
-    
+
+    // Validate severity enum
+    const validSeverities = ['low', 'medium', 'high', 'critical'];
+    if (severity && !validSeverities.includes(severity)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid severity. Must be one of: ${validSeverities.join(', ')}`
+      });
+    }
+
+    // Validate status enum
+    const validStatuses = ['reported', 'under_investigation', 'remediated', 'closed', 'archived'];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
+    // Validate incidentDate is not in the future
+    if (incidentDate) {
+      const incDate = new Date(incidentDate);
+      const now = new Date();
+      if (incDate > now) {
+        return res.status(400).json({
+          success: false,
+          message: 'Incident date cannot be in the future'
+        });
+      }
+    }
+
     // Get the current user from auth middleware
     const reportedBy = req.user.id;
-    
+
     const newIncident = await Incident.create({
       title,
       description,
       incidentDate: incidentDate ? new Date(incidentDate) : new Date(),
       reportedBy,
       reportedDate: new Date(),
-      status: 'reported',
+      status: status || 'reported',
       severity: severity || 'medium',
       category,
       location,
@@ -137,17 +182,17 @@ exports.createIncident = async (req, res) => {
       affectedData,
       isBreachable: isBreachable || false
     });
-    
+
     // Create initial update
     await IncidentUpdate.create({
       incidentId: newIncident.id,
       updateDate: new Date(),
       updatedBy: reportedBy,
       updateType: 'status_change',
-      newStatus: 'reported',
+      newStatus: status || 'reported',
       description: 'Incident reported'
     });
-    
+
     return res.status(201).json({
       success: true,
       message: 'Incident created successfully',
@@ -409,26 +454,35 @@ exports.addIncidentUpdate = async (req, res) => {
   try {
     const { id } = req.params;
     const { description, updateType, attachmentPath } = req.body;
-    
+
     if (!description) {
       return res.status(400).json({
         success: false,
         message: 'Update description is required'
       });
     }
-    
+
+    // Validate updateType enum
+    const validUpdateTypes = ['status_change', 'assignment', 'investigation', 'remediation', 'breach_determination', 'closure', 'comment'];
+    if (updateType && !validUpdateTypes.includes(updateType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid updateType. Must be one of: ${validUpdateTypes.join(', ')}`
+      });
+    }
+
     const incident = await Incident.findByPk(id);
-    
+
     if (!incident) {
       return res.status(404).json({
         success: false,
         message: 'Incident not found'
       });
     }
-    
+
     // Get the current user from auth middleware
     const updatedBy = req.user.id;
-    
+
     // Create update record
     const update = await IncidentUpdate.create({
       incidentId: id,
@@ -438,14 +492,14 @@ exports.addIncidentUpdate = async (req, res) => {
       description,
       attachmentPath
     });
-    
+
     // Get user details for response
     const updater = await User.findByPk(updatedBy, {
       attributes: ['id', 'firstName', 'lastName']
     });
-    
+
     update.dataValues.updater = updater;
-    
+
     return res.status(201).json({
       success: true,
       message: 'Update added successfully',
@@ -465,42 +519,42 @@ exports.addIncidentUpdate = async (req, res) => {
 exports.getIncidentUpdates = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Check if incident exists
     const incident = await Incident.findByPk(id);
-    
+
     if (!incident) {
       return res.status(404).json({
         success: false,
         message: 'Incident not found'
       });
     }
-    
-    // Get updates with pagination
-    const { page = 1, limit = 10 } = req.pagination;
-    
-    const updates = await IncidentUpdate.findAndCountAll({
+
+    // Get pagination parameters from middleware
+    const { limit, offset, page } = req.pagination || { limit: 10, offset: 0, page: 1 };
+
+    const { count, rows: updates } = await IncidentUpdate.findAndCountAll({
       where: { incidentId: id },
       include: [{
         model: User,
         as: 'updater',
         attributes: ['id', 'firstName', 'lastName']
       }],
-      order: [['updateDate', 'DESC']],
-      limit: limit,
-      offset: (page - 1) * limit
+      limit,
+      offset,
+      order: [['updateDate', 'DESC']]
     });
-    
+
     // Calculate pagination metadata
-    const totalPages = Math.ceil(updates.count / limit);
-    
+    const totalPages = Math.ceil(count / limit);
+
     return res.status(200).json({
       success: true,
-      data: updates.rows,
-      meta: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalItems: updates.count,
+      data: updates,
+      pagination: {
+        page,
+        limit,
+        total: count,
         totalPages
       }
     });
@@ -562,10 +616,6 @@ exports.deleteIncident = async (req, res) => {
 // Get incident statistics
 exports.getIncidentStatistics = async (req, res) => {
   try {
-    const { Op, QueryTypes } = require('sequelize');
-    const db = require('../models');
-    const sequelize = db.sequelize;
-
     // Use async/await with Promise.all to run multiple queries in parallel
     const baseExcludeFilter = { status: { [Op.ne]: 'archived' } };
     const thirtyDaysAgo = new Date(new Date().setDate(new Date().getDate() - 30));
