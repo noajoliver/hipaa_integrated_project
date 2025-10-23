@@ -58,16 +58,16 @@ exports.getCourseById = async (req, res) => {
 // Create a new training course
 exports.createCourse = async (req, res) => {
   try {
-    const { 
-      title, 
-      description, 
-      contentType, 
-      durationMinutes, 
-      frequencyDays, 
-      content, 
-      passingScore 
+    const {
+      title,
+      description,
+      contentType,
+      durationMinutes,
+      frequencyDays,
+      content,
+      passingScore
     } = req.body;
-    
+
     // Validate required fields
     if (!title) {
       return res.status(400).json({
@@ -75,7 +75,39 @@ exports.createCourse = async (req, res) => {
         message: 'Title is required'
       });
     }
-    
+
+    if (!description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Description is required'
+      });
+    }
+
+    // Validate contentType enum
+    const validContentTypes = ['video', 'document', 'quiz', 'interactive', 'webinar', 'classroom'];
+    if (contentType && !validContentTypes.includes(contentType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid contentType. Must be one of: ${validContentTypes.join(', ')}`
+      });
+    }
+
+    // Validate durationMinutes is positive
+    if (durationMinutes !== undefined && durationMinutes !== null && durationMinutes <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Duration must be a positive number'
+      });
+    }
+
+    // Validate passingScore is between 0-100
+    if (passingScore !== undefined && passingScore !== null && (passingScore < 0 || passingScore > 100)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Passing score must be between 0 and 100'
+      });
+    }
+
     const newCourse = await TrainingCourse.create({
       title,
       description,
@@ -87,7 +119,7 @@ exports.createCourse = async (req, res) => {
       status: 'active',
       version: '1.0'
     });
-    
+
     return res.status(201).json({
       success: true,
       message: 'Training course created successfully',
@@ -160,28 +192,28 @@ exports.updateCourse = async (req, res) => {
 exports.deleteCourse = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const course = await TrainingCourse.findByPk(id);
-    
+
     if (!course) {
       return res.status(404).json({
         success: false,
         message: 'Training course not found'
       });
     }
-    
-    // Archive the course instead of deleting
-    await course.update({ status: 'archived' });
-    
+
+    // Soft delete the course (sets deletedAt timestamp)
+    await course.destroy();
+
     return res.status(200).json({
       success: true,
-      message: 'Training course archived successfully'
+      message: 'Training course deleted successfully'
     });
   } catch (error) {
-    console.error('Error archiving training course:', error);
+    console.error('Error deleting training course:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to archive training course',
+      message: 'Failed to delete training course',
       error: error.message
     });
   }
@@ -310,13 +342,13 @@ exports.getUserAssignments = async (req, res) => {
 // Create a new training assignment
 exports.createAssignment = async (req, res) => {
   try {
-    const { 
-      userId, 
-      courseId, 
-      dueDate, 
-      notes 
+    const {
+      userId,
+      courseId,
+      dueDate,
+      notes
     } = req.body;
-    
+
     // Validate required fields
     if (!userId || !courseId) {
       return res.status(400).json({
@@ -324,28 +356,41 @@ exports.createAssignment = async (req, res) => {
         message: 'User ID and Course ID are required'
       });
     }
-    
+
     // Check if user exists
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
-        message: 'User not found'
+        message: 'Invalid userId: User not found'
       });
     }
-    
+
     // Check if course exists
     const course = await TrainingCourse.findByPk(courseId);
     if (!course) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
-        message: 'Training course not found'
+        message: 'Invalid courseId: Training course not found'
       });
     }
-    
+
+    // Validate dueDate is not in the past
+    if (dueDate) {
+      const dueDateObj = new Date(dueDate);
+      const now = new Date();
+      now.setHours(0, 0, 0, 0); // Start of today
+      if (dueDateObj < now) {
+        return res.status(400).json({
+          success: false,
+          message: 'Due date cannot be in the past'
+        });
+      }
+    }
+
     // Get the current user from auth middleware
     const assignedBy = req.user.id;
-    
+
     const newAssignment = await TrainingAssignment.create({
       userId,
       courseId,
@@ -355,7 +400,7 @@ exports.createAssignment = async (req, res) => {
       status: 'assigned',
       notes
     });
-    
+
     return res.status(201).json({
       success: true,
       message: 'Training assignment created successfully',
@@ -423,7 +468,22 @@ exports.completeAssignment = async (req, res) => {
   try {
     const { id } = req.params;
     const { score } = req.body;
-    
+
+    // Validate score is provided and valid
+    if (score === undefined || score === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'Score is required'
+      });
+    }
+
+    if (typeof score !== 'number' || score < 0 || score > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Score must be a number between 0 and 100'
+      });
+    }
+
     const assignment = await TrainingAssignment.findByPk(id, {
       include: [
         {
@@ -432,48 +492,49 @@ exports.completeAssignment = async (req, res) => {
         }
       ]
     });
-    
+
     if (!assignment) {
       return res.status(404).json({
         success: false,
         message: 'Training assignment not found'
       });
     }
-    
+
     // Check if the assignment is already completed
-    if (assignment.status === 'completed') {
+    if (assignment.status === 'completed' || assignment.status === 'failed') {
       return res.status(400).json({
         success: false,
         message: 'Training assignment is already completed'
       });
     }
-    
+
     // Check if the user has passed the course
     const passingScore = assignment.course.passingScore || 70; // Default passing score is 70%
     const status = score >= passingScore ? 'completed' : 'failed';
-    
+
     // Update assignment
     await assignment.update({
       status,
       completionDate: new Date(),
       score
     });
-    
+
+    // Reload to get updated values
+    await assignment.reload();
+
     // Generate certificate if passed
     let certificatePath = null;
     if (status === 'completed') {
       // In a real implementation, this would generate a certificate
       certificatePath = `/certificates/training_${assignment.id}_${Date.now()}.pdf`;
       await assignment.update({ certificatePath });
+      await assignment.reload();
     }
-    
+
     return res.status(200).json({
       success: true,
       message: status === 'completed' ? 'Training completed successfully' : 'Training failed',
-      data: {
-        assignment,
-        certificatePath
-      }
+      data: assignment
     });
   } catch (error) {
     console.error('Error completing training assignment:', error);
@@ -492,38 +553,48 @@ exports.getTrainingStatistics = async (req, res) => {
     const totalCourses = await TrainingCourse.count({
       where: { status: 'active' }
     });
-    
+
     // Total assignments
     const totalAssignments = await TrainingAssignment.count();
-    
+
     // Completed assignments
     const completedAssignments = await TrainingAssignment.count({
       where: { status: 'completed' }
     });
-    
+
+    // Pending assignments (assigned or in_progress)
+    const pendingAssignments = await TrainingAssignment.count({
+      where: {
+        status: {
+          [Op.in]: ['assigned', 'in_progress']
+        }
+      }
+    });
+
     // Overdue assignments
     const overdueAssignments = await TrainingAssignment.count({
       where: {
         status: {
-          [Op.notIn]: ['completed', 'expired']
+          [Op.notIn]: ['completed', 'expired', 'failed']
         },
         dueDate: {
           [Op.lt]: new Date()
         }
       }
     });
-    
+
     // Completion rate
-    const completionRate = totalAssignments > 0 
-      ? Math.round((completedAssignments / totalAssignments) * 100) 
+    const completionRate = totalAssignments > 0
+      ? Math.round((completedAssignments / totalAssignments) * 100)
       : 0;
-    
+
     return res.status(200).json({
       success: true,
       data: {
         totalCourses,
         totalAssignments,
         completedAssignments,
+        pendingAssignments,
         overdueAssignments,
         completionRate
       }

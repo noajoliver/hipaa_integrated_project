@@ -23,18 +23,22 @@ module.exports = {
     }
   },
   test: {
-    username: process.env.DB_USERNAME || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.DB_NAME || 'hipaa_compliance_test',
-    host: process.env.DB_HOST || 'localhost',
+    username: process.env.TEST_DB_USERNAME || 'test_user',
+    password: process.env.TEST_DB_PASSWORD || 'test_password',
+    database: process.env.TEST_DB_NAME || 'hipaa_compliance_test',
+    host: process.env.TEST_DB_HOST || 'localhost',
+    port: process.env.TEST_DB_PORT || 5432,
     dialect: 'postgres',
     logging: false,
     // Smaller pool for tests
     pool: {
-      max: 3,
+      max: 5,
       min: 0,
       acquire: 30000,
       idle: 10000
+    },
+    dialectOptions: {
+      application_name: 'hipaa-compliance-test'
     }
   },
   production: {

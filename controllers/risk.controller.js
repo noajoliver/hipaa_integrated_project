@@ -1,4 +1,4 @@
-const { RiskAssessment, RiskItem, User } = require('../models');
+const { RiskAssessment, RiskItem, User, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 // Get all risk assessments
@@ -89,14 +89,15 @@ exports.getRiskAssessmentById = async (req, res) => {
 // Create a new risk assessment
 exports.createRiskAssessment = async (req, res) => {
   try {
-    const { 
-      title, 
-      description, 
-      methodology, 
-      scope, 
-      nextAssessmentDate 
+    const {
+      title,
+      description,
+      methodology,
+      scope,
+      status,
+      nextAssessmentDate
     } = req.body;
-    
+
     // Validate required fields
     if (!title) {
       return res.status(400).json({
@@ -104,21 +105,37 @@ exports.createRiskAssessment = async (req, res) => {
         message: 'Title is required'
       });
     }
-    
+
+    if (!description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Description is required'
+      });
+    }
+
+    // Validate status enum
+    const validStatuses = ['draft', 'in_progress', 'completed', 'archived'];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
     // Get the current user from auth middleware
     const conductedBy = req.user.id;
-    
+
     const newAssessment = await RiskAssessment.create({
       title,
       description,
       assessmentDate: new Date(),
       conductedBy,
-      status: 'draft',
+      status: status || 'draft',
       methodology,
       scope,
       nextAssessmentDate: nextAssessmentDate ? new Date(nextAssessmentDate) : null
     });
-    
+
     return res.status(201).json({
       success: true,
       message: 'Risk assessment created successfully',
@@ -633,18 +650,14 @@ exports.getRiskStatistics = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: {
-        assessments: {
-          total: totalAssessments,
-          byStatus: assessmentsByStatus
-        },
-        riskItems: {
-          total: totalRiskItems,
-          byLevel: riskItemsByLevel,
-          byMitigationStatus: riskItemsByMitigationStatus,
-          byCategory: riskItemsByCategory,
-          highRisks,
-          unmitigatedHighRisks
-        },
+        totalAssessments,
+        assessmentsByStatus,
+        totalRiskItems,
+        risksByLevel: riskItemsByLevel,
+        risksByCategory: riskItemsByCategory,
+        mitigationStatus: riskItemsByMitigationStatus,
+        highRisks,
+        unmitigatedHighRisks,
         upcomingReviews
       }
     });

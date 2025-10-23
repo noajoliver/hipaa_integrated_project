@@ -5,7 +5,8 @@
  * @description Handles user authentication, registration, and account security functions
  */
 
-const { User, Op } = require('../models');
+const { User, Role } = require('../models');
+const { Op } = require('sequelize');
 const bcrypt = require('bcrypt');
 const { validationResult } = require('express-validator');
 const { trackLoginAttempt } = require('../middleware/account-protection');
@@ -166,20 +167,20 @@ exports.login = asyncHandler(async (req, res) => {
   const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
 
   // Validate request
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation error',
-      errors: errors.array()
-    });
-  }
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
+    }
 
-  // Find user by username
-  const user = await User.findOne({
-    where: { username },
-    include: ['role']
-  });
+    // Find user by username
+    const user = await User.findOne({
+      where: { username },
+      include: [{ model: Role, as: 'role' }]
+    });
 
   if (!user) {
     // Track failed login attempt for non-existent user
@@ -211,8 +212,8 @@ exports.login = asyncHandler(async (req, res) => {
   }
 
   // Check if account is temporarily locked
-  if (user.lockUntil && new Date(user.lockUntil) > new Date()) {
-    const remainingTime = Math.ceil((new Date(user.lockUntil) - new Date()) / 60000);
+  if (user.accountLockExpiresAt && new Date(user.accountLockExpiresAt) > new Date()) {
+    const remainingTime = Math.ceil((new Date(user.accountLockExpiresAt) - new Date()) / 60000);
     return res.status(403).json({
       success: false,
       message: `Account is temporarily locked. Try again in ${remainingTime} minutes.`,
@@ -251,17 +252,22 @@ exports.login = asyncHandler(async (req, res) => {
   }
 
   // Track successful login attempt
-  await securityService.handleSuccessfulLogin(user, ipAddress);
+  try {
+    await securityService.handleSuccessfulLogin(user, ipAddress);
+  } catch (err) {
+    console.error('Error in handleSuccessfulLogin:', err.message);
+    // Continue even if logging fails
+  }
 
   // Create user session
   const session = await createSession(
-    { 
-      id: user.id, 
-      username: user.username, 
+    {
+      id: user.id,
+      username: user.username,
       roleId: user.role.id,
       roleName: user.role.name
     },
-    { 
+    {
       userAgent,
       ipAddress
     }
@@ -336,15 +342,15 @@ exports.login = asyncHandler(async (req, res) => {
     });
   }
 
-  return res.status(200).json({
-    success: true,
-    message: 'Login successful',
-    data: {
-      user: userResponse,
-      requirePasswordChange,
-      sessionId: session.sessionId
-    }
-  });
+    return res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: userResponse,
+        requirePasswordChange,
+        sessionId: session.sessionId
+      }
+    });
 });
 
 /**

@@ -31,28 +31,27 @@ const trackLoginAttempt = async (username, success) => {
   if (success) {
     // Successful login resets attempts
     attempts = { count: 0, timestamps: [], lockedUntil: null };
-    
+
     // If account was locked due to failed attempts, update in database
     await User.update(
-      { accountStatus: 'active', lockedReason: null },
-      { where: { username, accountStatus: 'locked', lockedReason: 'failed_attempts' }}
+      { accountStatus: 'active', accountLockExpiresAt: null },
+      { where: { username, accountStatus: 'locked' }}
     );
   } else {
     // Increment failed attempts
     attempts.count = attempts.timestamps.length + 1;
     attempts.timestamps.push(now);
-    
+
     // Lock account if max attempts reached
     if (attempts.count >= maxAttempts) {
       const lockDuration = 30 * 60 * 1000; // 30 minutes
       attempts.lockedUntil = now + lockDuration;
-      
+
       // Update database to reflect locked status
       await User.update(
-        { 
-          accountStatus: 'locked', 
-          lockedReason: 'failed_attempts', 
-          lockedUntil: new Date(attempts.lockedUntil)
+        {
+          accountStatus: 'locked',
+          accountLockExpiresAt: new Date(attempts.lockedUntil)
         },
         { where: { username }}
       );
@@ -76,50 +75,50 @@ const isAccountLocked = async (username) => {
   
   // If no attempts record or no lock, check the database
   if (!attempts || !attempts.lockedUntil) {
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       where: { username },
-      attributes: ['accountStatus', 'lockedUntil', 'lockedReason']
+      attributes: ['accountStatus', 'accountLockExpiresAt']
     });
-    
+
     if (!user) return false;
-    
+
     // If locked in database but not in memory, add to memory
-    if (user.accountStatus === 'locked' && user.lockedReason === 'failed_attempts') {
-      const lockedUntil = user.lockedUntil ? new Date(user.lockedUntil).getTime() : null;
-      
+    if (user.accountStatus === 'locked') {
+      const lockedUntil = user.accountLockExpiresAt ? new Date(user.accountLockExpiresAt).getTime() : null;
+
       // If lock has expired, unlock in database
       if (lockedUntil && lockedUntil < Date.now()) {
         await User.update(
-          { accountStatus: 'active', lockedReason: null, lockedUntil: null },
+          { accountStatus: 'active', accountLockExpiresAt: null },
           { where: { username }}
         );
         return false;
       }
-      
+
       // Update in-memory store
-      loginAttempts.set(key, { 
-        count: 5, 
-        timestamps: [], 
-        lockedUntil 
+      loginAttempts.set(key, {
+        count: 5,
+        timestamps: [],
+        lockedUntil
       });
-      
+
       return true;
     }
-    
+
     return false;
   }
-  
+
   // Check if lock has expired
   if (attempts.lockedUntil < Date.now()) {
     // Reset attempts on expiration
     loginAttempts.set(key, { count: 0, timestamps: [], lockedUntil: null });
-    
+
     // Update database to reflect unlocked status
     await User.update(
-      { accountStatus: 'active', lockedReason: null, lockedUntil: null },
-      { where: { username, accountStatus: 'locked', lockedReason: 'failed_attempts' }}
+      { accountStatus: 'active', accountLockExpiresAt: null },
+      { where: { username, accountStatus: 'locked' }}
     );
-    
+
     return false;
   }
   
@@ -138,18 +137,18 @@ const getRemainingLockTime = async (username) => {
   const attempts = loginAttempts.get(key);
   
   if (!attempts || !attempts.lockedUntil) {
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       where: { username },
-      attributes: ['accountStatus', 'lockedUntil', 'lockedReason']
+      attributes: ['accountStatus', 'accountLockExpiresAt']
     });
-    
-    if (!user || user.accountStatus !== 'locked' || user.lockedReason !== 'failed_attempts') {
+
+    if (!user || user.accountStatus !== 'locked') {
       return 0;
     }
-    
-    const lockedUntil = user.lockedUntil ? new Date(user.lockedUntil).getTime() : null;
+
+    const lockedUntil = user.accountLockExpiresAt ? new Date(user.accountLockExpiresAt).getTime() : null;
     if (!lockedUntil) return 0;
-    
+
     const remainingMs = Math.max(0, lockedUntil - Date.now());
     return Math.ceil(remainingMs / 1000);
   }

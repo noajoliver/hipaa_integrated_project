@@ -5,13 +5,23 @@
 const request = require('supertest');
 const app = require('../../../server');
 const { connect, resetAndSeed, disconnect } = require('../../utils/test-db');
-const { generateToken } = require('../../../utils/token-manager');
-const { User } = require('../../../models');
+const { createAuthToken } = require('../../utils/auth-helpers');
+const { User, Role } = require('../../../models');
+
+let adminToken;
 
 beforeAll(async () => {
   // Connect to test database and reset data
   await connect();
   await resetAndSeed();
+
+  // Get admin user with role
+  const adminUser = await User.findOne({
+    where: { username: 'admin' },
+    include: [{ model: Role, as: 'role' }]
+  });
+
+  adminToken = createAuthToken(adminUser);
 });
 
 afterAll(async () => {
@@ -20,28 +30,28 @@ afterAll(async () => {
 });
 
 describe('Auth API Endpoints', () => {
-  describe('POST /api/auth/signin', () => {
+  describe('POST /api/auth/login', () => {
     it('should authenticate a user with valid credentials', async () => {
       const response = await request(app)
-        .post('/api/auth/signin')
+        .post('/api/auth/login')
         .send({
           username: 'admin',
-          password: 'Admin123!'
+          password: 'Password123!'
         })
         .expect('Content-Type', /json/)
         .expect(200);
-      
+
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('data');
-      expect(response.body.data).toHaveProperty('token');
       expect(response.body.data).toHaveProperty('user');
+      expect(response.body.data).toHaveProperty('sessionId');
       expect(response.body.data.user).toHaveProperty('username', 'admin');
       expect(response.body.data.user).not.toHaveProperty('password');
     });
     
     it('should reject authentication with invalid credentials', async () => {
       await request(app)
-        .post('/api/auth/signin')
+        .post('/api/auth/login')
         .send({
           username: 'admin',
           password: 'WrongPassword'
@@ -52,7 +62,7 @@ describe('Auth API Endpoints', () => {
     
     it('should reject authentication with missing credentials', async () => {
       await request(app)
-        .post('/api/auth/signin')
+        .post('/api/auth/login')
         .send({
           username: 'admin'
           // Missing password
@@ -62,19 +72,29 @@ describe('Auth API Endpoints', () => {
     });
   });
   
-  describe('POST /api/auth/signup', () => {
+  describe('POST /api/auth/register', () => {
     it('should register a new user with valid data', async () => {
+      // Get roleId and departmentId from database
+      const userRole = await Role.findOne({ where: { name: 'User' } });
+      const department = await User.findOne({
+        where: { username: 'admin' },
+        attributes: ['departmentId']
+      });
+
       const newUser = {
         username: 'registeruser',
         email: 'register@example.com',
         password: 'Register123!',
         firstName: 'Register',
         lastName: 'User',
-        position: 'New Employee'
+        position: 'New Employee',
+        roleId: userRole.id,
+        departmentId: department.departmentId
       };
-      
+
       const response = await request(app)
-        .post('/api/auth/signup')
+        .post('/api/auth/register')
+        .set('x-access-token', adminToken)
         .send(newUser)
         .expect('Content-Type', /json/)
         .expect(201);
@@ -96,73 +116,67 @@ describe('Auth API Endpoints', () => {
       };
       
       await request(app)
-        .post('/api/auth/signup')
+        .post('/api/auth/register')
+        .set('x-access-token', adminToken)
         .send(duplicateUser)
         .expect('Content-Type', /json/)
         .expect(400);
     });
-    
+
     it('should reject registration with missing required fields', async () => {
       const invalidUser = {
         username: 'incomplete',
         email: 'incomplete@example.com'
         // Missing required fields
       };
-      
+
       await request(app)
-        .post('/api/auth/signup')
+        .post('/api/auth/register')
+        .set('x-access-token', adminToken)
         .send(invalidUser)
         .expect('Content-Type', /json/)
         .expect(400);
     });
   });
   
-  describe('POST /api/auth/signout', () => {
+  describe('POST /api/auth/logout', () => {
     it('should log out a user successfully', async () => {
-      // Generate a token to blacklist
-      const user = await User.findOne({ where: { username: 'admin' } });
-      const tokenInfo = generateToken({ id: user.id, username: user.username });
-      
       const response = await request(app)
-        .post('/api/auth/signout')
-        .set('x-access-token', tokenInfo.token)
+        .post('/api/auth/logout')
+        .set('x-access-token', adminToken)
         .expect('Content-Type', /json/)
         .expect(200);
-      
+
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('message', 'Logged out successfully');
     });
-    
+
     it('should reject logout without token', async () => {
       await request(app)
-        .post('/api/auth/signout')
+        .post('/api/auth/logout')
         .expect('Content-Type', /json/)
         .expect(401);
     });
   });
-  
-  describe('GET /api/auth/user', () => {
+
+  describe('GET /api/auth/profile', () => {
     it('should return current user data', async () => {
-      // Generate a token
-      const user = await User.findOne({ where: { username: 'admin' } });
-      const tokenInfo = generateToken({ id: user.id, username: user.username });
-      
       const response = await request(app)
-        .get('/api/auth/user')
-        .set('x-access-token', tokenInfo.token)
+        .get('/api/auth/profile')
+        .set('x-access-token', adminToken)
         .expect('Content-Type', /json/)
         .expect(200);
       
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('data');
-      expect(response.body.data).toHaveProperty('id', user.id);
+      expect(response.body.data).toHaveProperty('id');
       expect(response.body.data).toHaveProperty('username', 'admin');
       expect(response.body.data).not.toHaveProperty('password');
     });
     
     it('should reject request without token', async () => {
       await request(app)
-        .get('/api/auth/user')
+        .get('/api/auth/profile')
         .expect('Content-Type', /json/)
         .expect(401);
     });

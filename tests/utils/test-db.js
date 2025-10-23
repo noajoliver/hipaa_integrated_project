@@ -2,20 +2,8 @@
  * Test database setup and utilities
  * @module tests/utils/test-db
  */
-const { Sequelize } = require('sequelize');
-const config = require('../../config/database')[process.env.NODE_ENV || 'test'];
-
-// Create a test database connection
-const sequelize = new Sequelize(
-  config.database,
-  config.username,
-  config.password,
-  {
-    host: config.host,
-    dialect: config.dialect,
-    logging: false // Disable logging for tests
-  }
-);
+const { sequelize } = require('../../models');
+const Factories = require('./factories');
 
 /**
  * Connect to the test database
@@ -62,70 +50,178 @@ const sync = async (options = {}) => {
 };
 
 /**
- * Reset and seed the test database with test data
- * @returns {Promise<void>}
+ * Reset and seed the test database with test data using factories
+ * @param {Object} options - Seeding options
+ * @returns {Promise<Object>} Created test data
  */
-const resetAndSeed = async () => {
+const resetAndSeed = async (options = {}) => {
   try {
+    // Drop all custom enum types first to avoid conflicts
+    try {
+      const [enumTypes] = await sequelize.query(`
+        SELECT t.typname as enum_name
+        FROM pg_type t
+        JOIN pg_enum e ON t.oid = e.enumtypid
+        JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+        WHERE n.nspname = 'public'
+        GROUP BY t.typname
+      `);
+
+      for (const enumType of enumTypes) {
+        await sequelize.query(`DROP TYPE IF EXISTS "${enumType.enum_name}" CASCADE`);
+      }
+      console.log('Dropped existing enum types');
+    } catch (enumError) {
+      console.log('No enum types to drop or error dropping enums:', enumError.message);
+    }
+
     // Reset the database
     await sequelize.sync({ force: true });
-    
-    // Import models
-    const { User, Role, Department } = require('../../models');
-    
-    // Create test roles
-    const adminRole = await Role.create({
-      name: 'Admin',
-      description: 'Administrator role',
-      permissions: { isAdmin: true }
-    });
-    
-    const userRole = await Role.create({
-      name: 'User',
-      description: 'Regular user role',
-      permissions: {}
-    });
-    
-    // Create test departments
-    const itDepartment = await Department.create({
+
+    console.log('Database reset, creating seed data...');
+
+    // Use factories to create test data
+    const seedData = {};
+
+    // Create roles using factory
+    seedData.adminRole = await Factories.getOrCreateRole('Admin');
+    seedData.userRole = await Factories.getOrCreateRole('User');
+    seedData.complianceOfficerRole = await Factories.getOrCreateRole('Compliance Officer');
+
+    // Create departments
+    seedData.itDepartment = await Factories.createDepartment({
       name: 'IT',
       description: 'Information Technology'
     });
-    
-    const hrDepartment = await Department.create({
+
+    seedData.hrDepartment = await Factories.createDepartment({
       name: 'HR',
       description: 'Human Resources'
     });
-    
-    // Create test users
-    const adminUser = await User.create({
+
+    // Create users with specific credentials for consistent testing
+    seedData.adminUser = await Factories.createAdmin({
       username: 'admin',
       email: 'admin@example.com',
-      password: '$2b$10$X.VhWnPjCWHv4.wZp.AXZOGJpVOdnl4JCJHKu/YMlMhh7.SCuW9hO', // password is 'Admin123!'
       firstName: 'Admin',
       lastName: 'User',
-      position: 'Administrator',
-      departmentId: itDepartment.id,
-      roleId: adminRole.id,
-      accountStatus: 'active'
+      departmentId: seedData.itDepartment.id
     });
-    
-    const testUser = await User.create({
+
+    seedData.testUser = await Factories.createUser({
       username: 'testuser',
       email: 'test@example.com',
-      password: '$2b$10$X.VhWnPjCWHv4.wZp.AXZOGJpVOdnl4JCJHKu/YMlMhh7.SCuW9hO', // password is 'Admin123!'
       firstName: 'Test',
       lastName: 'User',
-      position: 'Employee',
-      departmentId: hrDepartment.id,
-      roleId: userRole.id,
-      accountStatus: 'active'
+      departmentId: seedData.hrDepartment.id
     });
-    
-    console.log('Test database seeded successfully.');
+
+    seedData.complianceOfficer = await Factories.createComplianceOfficer({
+      username: 'compliance',
+      email: 'compliance@example.com',
+      firstName: 'Compliance',
+      lastName: 'Officer',
+      departmentId: seedData.itDepartment.id
+    });
+
+    // Optionally create additional test data
+    if (options.createCourses) {
+      seedData.courses = await Factories.createMultiple(Factories.createCourse, 3);
+    }
+
+    if (options.createDocuments) {
+      seedData.documents = [];
+      for (let i = 0; i < 3; i++) {
+        const doc = await Factories.createDocument(seedData.adminUser.id);
+        seedData.documents.push(doc);
+      }
+    }
+
+    if (options.createIncidents) {
+      seedData.incidents = [];
+      for (let i = 0; i < 2; i++) {
+        const incident = await Factories.createIncident(seedData.testUser.id);
+        seedData.incidents.push(incident);
+      }
+    }
+
+    console.log('Test database seeded successfully with factory data.');
+    return seedData;
   } catch (error) {
     console.error('Unable to seed the test database:', error);
     throw error;
+  }
+};
+
+/**
+ * Clean up all test data
+ * @returns {Promise<void>}
+ */
+const cleanup = async () => {
+  try {
+    await Factories.cleanup();
+    console.log('Test data cleaned up successfully.');
+  } catch (error) {
+    console.error('Error cleaning up test data:', error);
+    throw error;
+  }
+};
+
+/**
+ * Execute a function within a database transaction
+ * @param {Function} callback - Async function to execute within transaction
+ * @returns {Promise<any>} Result of callback function
+ */
+const withTransaction = async (callback) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const result = await callback(transaction);
+    await transaction.commit();
+    return result;
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+};
+
+/**
+ * Truncate all tables (faster than sync with force)
+ * @returns {Promise<void>}
+ */
+const truncateAllTables = async () => {
+  try {
+    // Get all model names
+    const models = Object.keys(sequelize.models);
+
+    // Disable foreign key checks temporarily
+    await sequelize.query('SET CONSTRAINTS ALL DEFERRED');
+
+    // Truncate each table
+    for (const modelName of models) {
+      await sequelize.models[modelName].destroy({
+        where: {},
+        force: true,
+        truncate: true
+      });
+    }
+
+    console.log('All tables truncated successfully.');
+  } catch (error) {
+    console.error('Error truncating tables:', error);
+    throw error;
+  }
+};
+
+/**
+ * Check if test database is accessible
+ * @returns {Promise<boolean>}
+ */
+const isAccessible = async () => {
+  try {
+    await sequelize.authenticate();
+    return true;
+  } catch (error) {
+    return false;
   }
 };
 
@@ -134,5 +230,9 @@ module.exports = {
   connect,
   disconnect,
   sync,
-  resetAndSeed
+  resetAndSeed,
+  cleanup,
+  withTransaction,
+  truncateAllTables,
+  isAccessible
 };

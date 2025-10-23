@@ -2,7 +2,7 @@
  * Document Controller - Handles HTTP requests for document-related operations
  * @module controllers/document
  */
-const { Document, DocumentCategory, DocumentAcknowledgment, User } = require('../models');
+const { Document, DocumentCategory, DocumentAcknowledgment, User, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
@@ -23,7 +23,10 @@ const path = require('path');
  */
 exports.getAllDocuments = async (req, res) => {
   try {
-    const documents = await Document.findAll({
+    // Get pagination parameters from middleware
+    const { limit, offset, page } = req.pagination || { limit: 20, offset: 0, page: 1 };
+
+    const { count, rows: documents } = await Document.findAndCountAll({
       where: {
         status: {
           [Op.ne]: 'archived'
@@ -40,12 +43,23 @@ exports.getAllDocuments = async (req, res) => {
           attributes: ['id', 'firstName', 'lastName']
         }
       ],
+      limit,
+      offset,
       order: [['title', 'ASC']]
     });
 
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(count / limit);
+
     return res.status(200).json({
       success: true,
-      data: documents
+      data: documents,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages
+      }
     });
   } catch (error) {
     console.error('Error getting documents:', error);
@@ -139,16 +153,16 @@ exports.getDocumentById = async (req, res) => {
  */
 exports.createDocument = async (req, res) => {
   try {
-    const { 
-      title, 
-      description, 
-      categoryId, 
-      version, 
-      documentType, 
+    const {
+      title,
+      description,
+      categoryId,
+      version,
+      documentType,
       hipaaCategory,
       reviewDate
     } = req.body;
-    
+
     // Validate required fields
     if (!title) {
       return res.status(400).json({
@@ -156,16 +170,52 @@ exports.createDocument = async (req, res) => {
         message: 'Title is required'
       });
     }
-    
+
+    if (!description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Description is required'
+      });
+    }
+
+    // Validate documentType enum
+    const validDocumentTypes = ['policy', 'procedure', 'form', 'template', 'reference', 'other'];
+    if (documentType && !validDocumentTypes.includes(documentType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid documentType. Must be one of: ${validDocumentTypes.join(', ')}`
+      });
+    }
+
+    // Validate hipaaCategory enum
+    const validHipaaCategories = ['privacy', 'security', 'breach_notification', 'general', 'other'];
+    if (hipaaCategory && !validHipaaCategories.includes(hipaaCategory)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid hipaaCategory. Must be one of: ${validHipaaCategories.join(', ')}`
+      });
+    }
+
+    // Validate categoryId if provided
+    if (categoryId) {
+      const category = await DocumentCategory.findByPk(categoryId);
+      if (!category) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid categoryId: Document category not found'
+        });
+      }
+    }
+
     // Handle file upload if present
     let filePath = null;
     if (req.file) {
       filePath = `/uploads/documents/${req.file.filename}`;
     }
-    
+
     // Get the current user from auth middleware
     const createdBy = req.user.id;
-    
+
     const newDocument = await Document.create({
       title,
       description,
@@ -178,7 +228,7 @@ exports.createDocument = async (req, res) => {
       hipaaCategory: hipaaCategory || 'general',
       createdBy
     });
-    
+
     return res.status(201).json({
       success: true,
       message: 'Document created successfully',
@@ -303,28 +353,28 @@ exports.updateDocument = async (req, res) => {
 exports.deleteDocument = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const document = await Document.findByPk(id);
-    
+
     if (!document) {
       return res.status(404).json({
         success: false,
         message: 'Document not found'
       });
     }
-    
-    // Archive the document instead of deleting
-    await document.update({ status: 'archived' });
-    
+
+    // Soft delete the document (sets deletedAt timestamp)
+    await document.destroy();
+
     return res.status(200).json({
       success: true,
-      message: 'Document archived successfully'
+      message: 'Document deleted successfully'
     });
   } catch (error) {
-    console.error('Error archiving document:', error);
+    console.error('Error deleting document:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to archive document',
+      message: 'Failed to delete document',
       error: error.message
     });
   }
@@ -391,7 +441,7 @@ exports.getAllCategories = async (req, res) => {
 exports.createCategory = async (req, res) => {
   try {
     const { name, description, parentId } = req.body;
-    
+
     // Validate required fields
     if (!name) {
       return res.status(400).json({
@@ -399,13 +449,25 @@ exports.createCategory = async (req, res) => {
         message: 'Name is required'
       });
     }
-    
+
+    // Check for duplicate category name
+    const existingCategory = await DocumentCategory.findOne({
+      where: { name }
+    });
+
+    if (existingCategory) {
+      return res.status(400).json({
+        success: false,
+        message: 'Category with this name already exists'
+      });
+    }
+
     const newCategory = await DocumentCategory.create({
       name,
       description,
       parentId
     });
-    
+
     return res.status(201).json({
       success: true,
       message: 'Document category created successfully',
@@ -487,6 +549,15 @@ exports.acknowledgeDocument = async (req, res) => {
     });
   } catch (error) {
     console.error('Error acknowledging document:', error);
+
+    // Handle unique constraint violation (concurrent acknowledgment attempts)
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Document already acknowledged'
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Failed to acknowledge document',
@@ -514,7 +585,7 @@ exports.acknowledgeDocument = async (req, res) => {
 exports.getDocumentAcknowledgments = async (req, res) => {
   try {
     const { documentId } = req.params;
-    
+
     // Check if document exists
     const document = await Document.findByPk(documentId);
     if (!document) {
@@ -523,8 +594,11 @@ exports.getDocumentAcknowledgments = async (req, res) => {
         message: 'Document not found'
       });
     }
-    
-    const acknowledgments = await DocumentAcknowledgment.findAll({
+
+    // Get pagination parameters from middleware
+    const { limit, offset, page } = req.pagination || { limit: 20, offset: 0, page: 1 };
+
+    const { count, rows: acknowledgments } = await DocumentAcknowledgment.findAndCountAll({
       where: { documentId },
       include: [
         {
@@ -533,12 +607,23 @@ exports.getDocumentAcknowledgments = async (req, res) => {
           attributes: ['id', 'firstName', 'lastName', 'email']
         }
       ],
+      limit,
+      offset,
       order: [['acknowledgmentDate', 'DESC']]
     });
-    
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(count / limit);
+
     return res.status(200).json({
       success: true,
-      data: acknowledgments
+      data: acknowledgments,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages
+      }
     });
   } catch (error) {
     console.error('Error getting document acknowledgments:', error);
@@ -703,11 +788,14 @@ exports.getDocumentsRequiringAcknowledgment = async (req, res) => {
  */
 exports.getDocumentStatistics = async (req, res) => {
   try {
-    // Total documents
-    const totalDocuments = await Document.count({
+    // Total documents (all statuses)
+    const totalDocuments = await Document.count();
+
+    // Active documents only
+    const activeDocuments = await Document.count({
       where: { status: 'active' }
     });
-    
+
     // Documents by type
     const documentsByType = await Document.findAll({
       attributes: [
@@ -717,7 +805,7 @@ exports.getDocumentStatistics = async (req, res) => {
       where: { status: 'active' },
       group: ['documentType']
     });
-    
+
     // Documents by HIPAA category
     const documentsByCategory = await Document.findAll({
       attributes: [
@@ -727,7 +815,7 @@ exports.getDocumentStatistics = async (req, res) => {
       where: { status: 'active' },
       group: ['hipaaCategory']
     });
-    
+
     // Documents requiring review
     const documentsRequiringReview = await Document.count({
       where: {
@@ -737,14 +825,15 @@ exports.getDocumentStatistics = async (req, res) => {
         }
       }
     });
-    
+
     // Total acknowledgments
     const totalAcknowledgments = await DocumentAcknowledgment.count();
-    
+
     return res.status(200).json({
       success: true,
       data: {
         totalDocuments,
+        activeDocuments,
         documentsByType,
         documentsByCategory,
         documentsRequiringReview,
