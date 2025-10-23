@@ -2,6 +2,15 @@
 
 This README provides an overview of the enhanced HIPAA Compliance Tool integrated solution, which combines both backend and frontend components into a single, comprehensive project.
 
+## Technology Stack
+
+- **Backend**: Node.js 18+ with Express.js framework
+- **Database**: PostgreSQL 16 with Sequelize ORM
+- **Frontend**: React with React Router and Context API
+- **Authentication**: JWT-based authentication with role-based access control
+- **Testing**: Jest with Supertest for API integration testing
+- **Security**: bcrypt password hashing, account lockout protection, MFA support
+
 ## Features
 
 - **User and Role Management**: Complete role-based access control system
@@ -11,6 +20,9 @@ This README provides an overview of the enhanced HIPAA Compliance Tool integrate
 - **Incident Management**: Security incident tracking and response workflow
 - **Enhanced Audit Logging**: Detailed activity tracking and reporting
 - **Advanced Reporting**: Customizable compliance reports and dashboards
+- **Multi-Factor Authentication**: Optional MFA with TOTP and backup codes
+- **Account Protection**: Failed login tracking with automatic account lockout
+- **Session Management**: Multi-device session tracking with individual revocation
 
 ## Cross-Platform Support
 
@@ -46,16 +58,61 @@ For detailed instructions, see the [Windows Deployment Guide](windows_deployment
 
 ## Testing
 
+### Test Suite Status
+
+**100% Test Pass Rate Achieved** - All 152 API integration tests passing
+
+| API Suite | Tests | Status |
+|-----------|-------|--------|
+| Training API | 37/37 | ✅ 100% |
+| Document API | 33/33 | ✅ 100% |
+| Risk API | 27/27 | ✅ 100% |
+| Incident API | 31/31 | ✅ 100% |
+| User API | 14/14 | ✅ 100% |
+| Auth API | 10/10 | ✅ 100% |
+
+### Running Tests
+
+```bash
+# Run all API integration tests
+npm test -- tests/integration/api/
+
+# Run specific test suite
+npm test -- tests/integration/api/auth.api.test.js
+npm test -- tests/integration/api/training.api.test.js
+npm test -- tests/integration/api/document.api.test.js
+npm test -- tests/integration/api/risk.api.test.js
+npm test -- tests/integration/api/incident.api.test.js
+npm test -- tests/integration/api/user.api.test.js
+
+# Run tests sequentially (recommended for integration tests)
+npm test -- --runInBand tests/integration/api/
+```
+
+### Platform-Specific Test Scripts
+
 The package includes test scripts for verifying the installation:
 
 - `test-integration-windows.bat` / `test-integration.sh`: Tests the integrated application
 - `test-docker-windows.bat` / `test-docker.sh`: Tests the Docker deployment
 
+### Recent Test Fixes
+
+The test suite has been comprehensively fixed to achieve 100% pass rate:
+
+- **Auth API**: Fixed Sequelize Op imports, database field alignments, and test authentication
+- **Document API**: Resolved concurrent acknowledgment race conditions
+- **Incident API**: Fixed SQL enum type casting in UNION queries
+- **User API**: Corrected route ordering to prevent wildcard conflicts
+- **Account Protection**: Updated database schema references from deprecated fields
+
 ## Default Credentials
 
 After initializing the database, you can log in with:
 - Username: `admin`
-- Password: `admin123`
+- Password: `Password123!`
+
+**Important**: Change the default password immediately after first login for security.
 
 ## Security Considerations
 
