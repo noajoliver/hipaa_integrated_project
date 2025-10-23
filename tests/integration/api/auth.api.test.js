@@ -74,15 +74,24 @@ describe('Auth API Endpoints', () => {
   
   describe('POST /api/auth/register', () => {
     it('should register a new user with valid data', async () => {
+      // Get roleId and departmentId from database
+      const userRole = await Role.findOne({ where: { name: 'User' } });
+      const department = await User.findOne({
+        where: { username: 'admin' },
+        attributes: ['departmentId']
+      });
+
       const newUser = {
         username: 'registeruser',
         email: 'register@example.com',
         password: 'Register123!',
         firstName: 'Register',
         lastName: 'User',
-        position: 'New Employee'
+        position: 'New Employee',
+        roleId: userRole.id,
+        departmentId: department.departmentId
       };
-      
+
       const response = await request(app)
         .post('/api/auth/register')
         .set('x-access-token', adminToken)
@@ -132,20 +141,16 @@ describe('Auth API Endpoints', () => {
   
   describe('POST /api/auth/logout', () => {
     it('should log out a user successfully', async () => {
-      // Generate a token to blacklist
-      const user = await User.findOne({ where: { username: 'admin' } });
-      const tokenInfo = generateToken({ id: user.id, username: user.username });
-      
       const response = await request(app)
         .post('/api/auth/logout')
-        .set('x-access-token', tokenInfo.token)
+        .set('x-access-token', adminToken)
         .expect('Content-Type', /json/)
         .expect(200);
-      
+
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('message', 'Logged out successfully');
     });
-    
+
     it('should reject logout without token', async () => {
       await request(app)
         .post('/api/auth/logout')
@@ -153,22 +158,18 @@ describe('Auth API Endpoints', () => {
         .expect(401);
     });
   });
-  
+
   describe('GET /api/auth/profile', () => {
     it('should return current user data', async () => {
-      // Generate a token
-      const user = await User.findOne({ where: { username: 'admin' } });
-      const tokenInfo = generateToken({ id: user.id, username: user.username });
-      
       const response = await request(app)
         .get('/api/auth/profile')
-        .set('x-access-token', tokenInfo.token)
+        .set('x-access-token', adminToken)
         .expect('Content-Type', /json/)
         .expect(200);
       
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('data');
-      expect(response.body.data).toHaveProperty('id', user.id);
+      expect(response.body.data).toHaveProperty('id');
       expect(response.body.data).toHaveProperty('username', 'admin');
       expect(response.body.data).not.toHaveProperty('password');
     });

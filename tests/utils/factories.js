@@ -114,13 +114,16 @@ class Factories {
     // Get or create default role
     const defaultRole = await this.getOrCreateRole('User');
 
-    // Pre-hashed password for 'Password123!'
-    const hashedPassword = '$2b$10$X.VhWnPjCWHv4.wZp.AXZOGJpVOdnl4JCJHKu/YMlMhh7.SCuW9hO';
+    // Hash password if not already hashed (detect by checking if it starts with $2b$)
+    let password = overrides.password || 'Password123!';
+    if (!password.startsWith('$2b$') && !password.startsWith('$2a$')) {
+      password = await bcrypt.hash(password, 10);
+    }
 
     const userData = {
       username: faker.internet.username().toLowerCase().substring(0, 50),
       email: faker.internet.email().toLowerCase(),
-      password: hashedPassword,
+      password,
       firstName: faker.person.firstName(),
       lastName: faker.person.lastName(),
       position: faker.person.jobTitle(),

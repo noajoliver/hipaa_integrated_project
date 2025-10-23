@@ -5,7 +5,8 @@
  * @description Handles user authentication, registration, and account security functions
  */
 
-const { User, Role, Op } = require('../models');
+const { User, Role } = require('../models');
+const { Op } = require('sequelize');
 const bcrypt = require('bcrypt');
 const { validationResult } = require('express-validator');
 const { trackLoginAttempt } = require('../middleware/account-protection');
@@ -166,20 +167,20 @@ exports.login = asyncHandler(async (req, res) => {
   const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
 
   // Validate request
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation error',
-      errors: errors.array()
-    });
-  }
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
+    }
 
-  // Find user by username
-  const user = await User.findOne({
-    where: { username },
-    include: [{ model: Role, as: 'role' }]
-  });
+    // Find user by username
+    const user = await User.findOne({
+      where: { username },
+      include: [{ model: Role, as: 'role' }]
+    });
 
   if (!user) {
     // Track failed login attempt for non-existent user
@@ -341,15 +342,15 @@ exports.login = asyncHandler(async (req, res) => {
     });
   }
 
-  return res.status(200).json({
-    success: true,
-    message: 'Login successful',
-    data: {
-      user: userResponse,
-      requirePasswordChange,
-      sessionId: session.sessionId
-    }
-  });
+    return res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: userResponse,
+        requirePasswordChange,
+        sessionId: session.sessionId
+      }
+    });
 });
 
 /**
