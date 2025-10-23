@@ -30,11 +30,11 @@ describe('Auth API Endpoints', () => {
         })
         .expect('Content-Type', /json/)
         .expect(200);
-      
+
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('data');
-      expect(response.body.data).toHaveProperty('token');
       expect(response.body.data).toHaveProperty('user');
+      expect(response.body.data).toHaveProperty('sessionId');
       expect(response.body.data.user).toHaveProperty('username', 'admin');
       expect(response.body.data.user).not.toHaveProperty('password');
     });

@@ -56,6 +56,25 @@ const sync = async (options = {}) => {
  */
 const resetAndSeed = async (options = {}) => {
   try {
+    // Drop all custom enum types first to avoid conflicts
+    try {
+      const [enumTypes] = await sequelize.query(`
+        SELECT t.typname as enum_name
+        FROM pg_type t
+        JOIN pg_enum e ON t.oid = e.enumtypid
+        JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+        WHERE n.nspname = 'public'
+        GROUP BY t.typname
+      `);
+
+      for (const enumType of enumTypes) {
+        await sequelize.query(`DROP TYPE IF EXISTS "${enumType.enum_name}" CASCADE`);
+      }
+      console.log('Dropped existing enum types');
+    } catch (enumError) {
+      console.log('No enum types to drop or error dropping enums:', enumError.message);
+    }
+
     // Reset the database
     await sequelize.sync({ force: true });
 

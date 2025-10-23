@@ -110,15 +110,13 @@ const handleFailedLogin = async (user, ipAddress) => {
     
     // Update user data
     const updateData = {
-      failedLoginAttempts: failedAttempts,
-      lastFailedLogin: new Date()
+      failedLoginAttempts: failedAttempts
     };
     
     // If max attempts reached, lock account temporarily
     if (failedAttempts >= maxFailedAttempts) {
       const lockUntil = new Date();
       lockUntil.setMinutes(lockUntil.getMinutes() + lockoutDuration);
-      updateData.lockUntil = lockUntil;
       updateData.accountStatus = 'locked';
       updateData.accountLockExpiresAt = lockUntil;
     }
@@ -150,17 +148,15 @@ const handleSuccessfulLogin = async (user, ipAddress) => {
   try {
     await user.update({
       failedLoginAttempts: 0,
-      lockUntil: null,
       accountLockExpiresAt: null,
-      lastLogin: new Date(),
-      lastActivityAt: new Date()
+      lastLogin: new Date()
     });
-    
+
     // Log successful login
     await logSecurityEvent(user.id, 'SUCCESSFUL_LOGIN', {
       ipAddress
     });
-    
+
     return true;
   } catch (error) {
     logger.error('Error handling successful login:', error);

@@ -241,9 +241,13 @@ describe('User API Endpoints', () => {
       const response = await request(app)
         .get('/api/users/roles')
         .set('x-access-token', adminToken)
-        .expect('Content-Type', /json/)
-        .expect(200);
-      
+        .expect('Content-Type', /json/);
+
+      if (response.status !== 200) {
+        console.log('Roles error response:', response.body);
+      }
+
+      expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('data');
       expect(Array.isArray(response.body.data)).toBe(true);

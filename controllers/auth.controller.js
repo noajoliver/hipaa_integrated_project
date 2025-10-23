@@ -211,8 +211,8 @@ exports.login = asyncHandler(async (req, res) => {
   }
 
   // Check if account is temporarily locked
-  if (user.lockUntil && new Date(user.lockUntil) > new Date()) {
-    const remainingTime = Math.ceil((new Date(user.lockUntil) - new Date()) / 60000);
+  if (user.accountLockExpiresAt && new Date(user.accountLockExpiresAt) > new Date()) {
+    const remainingTime = Math.ceil((new Date(user.accountLockExpiresAt) - new Date()) / 60000);
     return res.status(403).json({
       success: false,
       message: `Account is temporarily locked. Try again in ${remainingTime} minutes.`,
