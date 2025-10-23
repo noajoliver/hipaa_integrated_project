@@ -161,20 +161,19 @@ exports.register = asyncHandler(async (req, res) => {
  * @throws {AppError} If authentication fails
  */
 exports.login = asyncHandler(async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    const userAgent = req.headers['user-agent'] || 'unknown';
-    const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+  const { username, password } = req.body;
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
 
-    // Validate request
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation error',
-        errors: errors.array()
-      });
-    }
+  // Validate request
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation error',
+      errors: errors.array()
+    });
+  }
 
   // Find user by username
   const user = await User.findOne({
@@ -342,21 +341,15 @@ exports.login = asyncHandler(async (req, res) => {
     });
   }
 
-    return res.status(200).json({
-      success: true,
-      message: 'Login successful',
-      data: {
-        user: userResponse,
-        requirePasswordChange,
-        sessionId: session.sessionId
-      }
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    throw error;
-  }
+  return res.status(200).json({
+    success: true,
+    message: 'Login successful',
+    data: {
+      user: userResponse,
+      requirePasswordChange,
+      sessionId: session.sessionId
+    }
+  });
 });
 
 /**

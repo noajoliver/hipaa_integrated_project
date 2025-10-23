@@ -5,13 +5,23 @@
 const request = require('supertest');
 const app = require('../../../server');
 const { connect, resetAndSeed, disconnect } = require('../../utils/test-db');
-const { generateToken } = require('../../../utils/token-manager');
-const { User } = require('../../../models');
+const { createAuthToken } = require('../../utils/auth-helpers');
+const { User, Role } = require('../../../models');
+
+let adminToken;
 
 beforeAll(async () => {
   // Connect to test database and reset data
   await connect();
   await resetAndSeed();
+
+  // Get admin user with role
+  const adminUser = await User.findOne({
+    where: { username: 'admin' },
+    include: [{ model: Role, as: 'role' }]
+  });
+
+  adminToken = createAuthToken(adminUser);
 });
 
 afterAll(async () => {
@@ -26,7 +36,7 @@ describe('Auth API Endpoints', () => {
         .post('/api/auth/login')
         .send({
           username: 'admin',
-          password: 'Admin123!'
+          password: 'Password123!'
         })
         .expect('Content-Type', /json/)
         .expect(200);
@@ -75,6 +85,7 @@ describe('Auth API Endpoints', () => {
       
       const response = await request(app)
         .post('/api/auth/register')
+        .set('x-access-token', adminToken)
         .send(newUser)
         .expect('Content-Type', /json/)
         .expect(201);
@@ -97,20 +108,22 @@ describe('Auth API Endpoints', () => {
       
       await request(app)
         .post('/api/auth/register')
+        .set('x-access-token', adminToken)
         .send(duplicateUser)
         .expect('Content-Type', /json/)
         .expect(400);
     });
-    
+
     it('should reject registration with missing required fields', async () => {
       const invalidUser = {
         username: 'incomplete',
         email: 'incomplete@example.com'
         // Missing required fields
       };
-      
+
       await request(app)
         .post('/api/auth/register')
+        .set('x-access-token', adminToken)
         .send(invalidUser)
         .expect('Content-Type', /json/)
         .expect(400);

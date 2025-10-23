@@ -263,11 +263,12 @@ const logSecurityEvent = async (userId, eventType, details = {}) => {
     await AuditLog.create({
       userId,
       action: eventType,
+      entityType: 'security',
       category: 'SECURITY',
       details: JSON.stringify(details),
       timestamp: new Date()
     });
-    
+
     return true;
   } catch (error) {
     logger.error(`Error logging security event: ${eventType}`, error);
