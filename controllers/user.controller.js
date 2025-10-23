@@ -4,6 +4,7 @@
  */
 const userService = require('../services/user.service');
 const { asyncHandler } = require('../utils/error-handler');
+const { Role, Department, User } = require('../models');
 
 /**
  * Get all users
@@ -164,8 +165,10 @@ exports.deleteUser = asyncHandler(async (req, res) => {
  * @throws {AppError} If retrieval fails
  */
 exports.getAllRoles = asyncHandler(async (req, res) => {
-  const roles = await userService.getAllRoles();
-  
+  const roles = await Role.findAll({
+    order: [['name', 'ASC']]
+  });
+
   return res.status(200).json({
     success: true,
     data: roles
@@ -216,8 +219,18 @@ exports.createRole = asyncHandler(async (req, res) => {
  * @throws {AppError} If retrieval fails
  */
 exports.getAllDepartments = asyncHandler(async (req, res) => {
-  const departments = await userService.getAllDepartments();
-  
+  const departments = await Department.findAll({
+    include: [
+      {
+        model: User,
+        as: 'manager',
+        attributes: ['id', 'firstName', 'lastName'],
+        required: false
+      }
+    ],
+    order: [['name', 'ASC']]
+  });
+
   return res.status(200).json({
     success: true,
     data: departments

@@ -5,7 +5,7 @@
  * @description Handles user authentication, registration, and account security functions
  */
 
-const { User, Op } = require('../models');
+const { User, Role, Op } = require('../models');
 const bcrypt = require('bcrypt');
 const { validationResult } = require('express-validator');
 const { trackLoginAttempt } = require('../middleware/account-protection');
@@ -178,7 +178,7 @@ exports.login = asyncHandler(async (req, res) => {
   // Find user by username
   const user = await User.findOne({
     where: { username },
-    include: ['role']
+    include: [{ model: Role, as: 'role' }]
   });
 
   if (!user) {

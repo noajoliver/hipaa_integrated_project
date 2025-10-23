@@ -5,7 +5,7 @@
 const request = require('supertest');
 const app = require('../../../server');
 const { connect, resetAndSeed, disconnect } = require('../../utils/test-db');
-const { generateToken } = require('../../../utils/token-manager');
+const { createAuthToken } = require('../../utils/auth-helpers');
 const { User, Role } = require('../../../models');
 
 let adminToken;
@@ -17,36 +17,24 @@ beforeAll(async () => {
   // Connect to test database and reset data
   await connect();
   await resetAndSeed();
-  
-  // Get user IDs from database
+
+  // Get users with roles loaded
   const adminUser = await User.findOne({
     where: { username: 'admin' },
     include: [{ model: Role, as: 'role' }]
   });
-  
+
   const regularUser = await User.findOne({
     where: { username: 'testuser' },
     include: [{ model: Role, as: 'role' }]
   });
-  
+
   adminUserId = adminUser.id;
   regularUserId = regularUser.id;
-  
+
   // Generate tokens for testing
-  const adminTokenInfo = generateToken({ 
-    id: adminUser.id, 
-    username: adminUser.username,
-    roleId: adminUser.roleId
-  });
-  
-  const userTokenInfo = generateToken({ 
-    id: regularUser.id, 
-    username: regularUser.username,
-    roleId: regularUser.roleId
-  });
-  
-  adminToken = adminTokenInfo.token;
-  userToken = userTokenInfo.token;
+  adminToken = createAuthToken(adminUser);
+  userToken = createAuthToken(regularUser);
 });
 
 afterAll(async () => {
