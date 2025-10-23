@@ -549,6 +549,15 @@ exports.acknowledgeDocument = async (req, res) => {
     });
   } catch (error) {
     console.error('Error acknowledging document:', error);
+
+    // Handle unique constraint violation (concurrent acknowledgment attempts)
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Document already acknowledged'
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Failed to acknowledge document',

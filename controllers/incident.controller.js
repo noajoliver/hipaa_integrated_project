@@ -641,7 +641,7 @@ exports.getIncidentStatistics = async (req, res) => {
       // 2. Perform aggregations for status, severity, and category
       sequelize.query(`
         SELECT
-          'status' as group_type, status as group_value, COUNT(*) as count
+          'status' as group_type, status::text as group_value, COUNT(*) as count
         FROM incidents
         WHERE status != 'archived'
         GROUP BY status
@@ -649,7 +649,7 @@ exports.getIncidentStatistics = async (req, res) => {
         UNION ALL
 
         SELECT
-          'severity' as group_type, severity as group_value, COUNT(*) as count
+          'severity' as group_type, severity::text as group_value, COUNT(*) as count
         FROM incidents
         WHERE status != 'archived'
         GROUP BY severity
@@ -657,7 +657,7 @@ exports.getIncidentStatistics = async (req, res) => {
         UNION ALL
 
         SELECT
-          'category' as group_type, category as group_value, COUNT(*) as count
+          'category' as group_type, category::text as group_value, COUNT(*) as count
         FROM incidents
         WHERE status != 'archived'
         GROUP BY category
@@ -730,12 +730,12 @@ exports.getIncidentStatistics = async (req, res) => {
       data: {
         totalIncidents: totalIncidentsCount,
         openIncidents: parseInt(openIncidents || 0),
-        potentialBreaches: parseInt(potentialBreaches || 0),
+        breachableIncidents: parseInt(potentialBreaches || 0),
         recentIncidents: parseInt(recentIncidents || 0),
         avgTimeToClose,
-        byStatus,
-        bySeverity,
-        byCategory
+        incidentsByStatus: byStatus,
+        incidentsBySeverity: bySeverity,
+        incidentsByCategory: byCategory
       }
     });
   } catch (error) {
